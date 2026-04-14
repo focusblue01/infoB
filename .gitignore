@@ -1,0 +1,9 @@
+node_modules/
+.next/
+.env.local
+.env
+*.tsbuildinfo
+next-env.d.ts
+create_prd.js
+create_docs.js
+.claude/
