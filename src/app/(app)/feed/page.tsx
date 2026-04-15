@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { BriefingCard } from "@/components/feed/BriefingCard";
+import { InterestsSummary } from "@/components/feed/InterestsSummary";
 import { Button } from "@/components/ui/button";
 import { ChevronLeft, ChevronRight, Newspaper } from "lucide-react";
 import { formatDate } from "@/lib/utils";
@@ -64,6 +65,9 @@ export default function FeedPage() {
 
   return (
     <div className="space-y-6">
+      {/* 관심사 요약 */}
+      <InterestsSummary />
+
       {/* 날짜 네비게이션 */}
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">오늘의 브리핑</h1>
