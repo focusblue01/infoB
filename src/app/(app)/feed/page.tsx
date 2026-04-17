@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { BriefingCard } from "@/components/feed/BriefingCard";
 import { InterestsSummary } from "@/components/feed/InterestsSummary";
 import { Button } from "@/components/ui/button";
-import { ChevronLeft, ChevronRight, Newspaper } from "lucide-react";
+import { ChevronLeft, ChevronRight, Newspaper, Sparkles, Loader2 } from "lucide-react";
 import { formatDate } from "@/lib/utils";
 
 interface SummaryItem {
@@ -21,6 +21,8 @@ export default function FeedPage() {
   const [date, setDate] = useState(() => new Date().toISOString().split("T")[0]);
   const [summaries, setSummaries] = useState<SummaryItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [generating, setGenerating] = useState(false);
+  const [generateMsg, setGenerateMsg] = useState<string | null>(null);
 
   useEffect(() => {
     fetchFeed();
@@ -32,6 +34,30 @@ export default function FeedPage() {
     const data = await res.json();
     setSummaries(data.summaries ?? []);
     setLoading(false);
+  }
+
+  async function handleGenerate() {
+    setGenerating(true);
+    setGenerateMsg(null);
+    try {
+      const res = await fetch("/api/briefing/generate", { method: "POST" });
+      const data = await res.json();
+      if (!res.ok) {
+        setGenerateMsg(`❌ ${data.error ?? "생성 실패"}`);
+      } else {
+        setGenerateMsg(
+          `✅ 수집 ${data.collected}건 / 브리핑 ${data.summariesSucceeded}개 생성`
+        );
+        // 오늘 날짜로 이동하면서 새로 고침
+        setDate(new Date().toISOString().split("T")[0]);
+        await fetchFeed();
+      }
+    } catch (e: any) {
+      setGenerateMsg(`❌ ${e.message}`);
+    } finally {
+      setGenerating(false);
+      setTimeout(() => setGenerateMsg(null), 8000);
+    }
   }
 
   function changeDate(days: number) {
@@ -68,9 +94,29 @@ export default function FeedPage() {
       {/* 관심사 요약 */}
       <InterestsSummary />
 
-      {/* 날짜 네비게이션 */}
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">오늘의 브리핑</h1>
+      {/* 날짜 네비게이션 + 생성 버튼 */}
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <div className="flex items-center gap-3">
+          <h1 className="text-2xl font-bold">오늘의 브리핑</h1>
+          <Button
+            onClick={handleGenerate}
+            disabled={generating}
+            size="sm"
+            className="gap-1"
+          >
+            {generating ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                생성 중...
+              </>
+            ) : (
+              <>
+                <Sparkles className="h-4 w-4" />
+                바로 생성
+              </>
+            )}
+          </Button>
+        </div>
         <div className="flex items-center gap-2">
           <Button variant="outline" size="icon" onClick={() => changeDate(-1)}>
             <ChevronLeft className="h-4 w-4" />
@@ -83,6 +129,10 @@ export default function FeedPage() {
           </Button>
         </div>
       </div>
+
+      {generateMsg && (
+        <div className="rounded-md bg-muted px-4 py-2 text-sm">{generateMsg}</div>
+      )}
 
       {/* 콘텐츠 */}
       {loading ? (
