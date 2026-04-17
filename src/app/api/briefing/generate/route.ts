@@ -57,15 +57,17 @@ export async function POST() {
         .upsert(groupsToUpsert, { onConflict: "group_type,group_key", ignoreDuplicates: true });
     }
 
-    // 3. 뉴스 수집 (최근 1시간 내 수집 이력 없을 때만)
+    // 3. 뉴스 수집 (강제 재수집: 기존 기사가 잘못 태깅됐을 수 있음)
+    // 최근 1시간 이내 기사 10개 이상이면 스킵, 아니면 수집
     const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
     const { count: recentCount } = await admin
       .from("articles")
       .select("*", { count: "exact", head: true })
-      .gte("collected_at", oneHourAgo);
+      .gte("collected_at", oneHourAgo)
+      .not("category", "is", null);  // 카테고리 있는 기사만 카운트
 
     let collectResult = { collected: 0, skipped: 0 };
-    if ((recentCount ?? 0) < 10) {
+    if ((recentCount ?? 0) < 5) {
       collectResult = await collectNews();
     }
 
