@@ -76,6 +76,32 @@ export async function POST() {
     const succeeded = summaryResults.filter((r) => r.success).length;
     const failed = summaryResults.filter((r) => !r.success);
 
+    // 5. 각 그룹의 매칭 기사 수 진단
+    const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+    const diagnostics: any[] = [];
+    for (const group of groupsToUpsert) {
+      let q = admin.from("articles").select("id, title, category, matched_keywords", { count: "exact" }).gte("collected_at", yesterday);
+      if (group.group_type === "category") {
+        q = q.eq("category", group.group_key);
+      } else {
+        q = q.contains("matched_keywords", [group.group_key]);
+      }
+      const { data, count } = await q.limit(3);
+      diagnostics.push({
+        group_type: group.group_type,
+        group_key: group.group_key,
+        matched_count: count,
+        samples: data?.map((a: any) => ({ title: a.title, category: a.category, kws: a.matched_keywords })),
+      });
+    }
+
+    // 기사 20건 샘플 (카테고리/키워드 확인용)
+    const { data: articleSamples } = await admin
+      .from("articles")
+      .select("title, category, matched_keywords")
+      .limit(5)
+      .order("collected_at", { ascending: false });
+
     return NextResponse.json({
       success: true,
       collected: collectResult.collected,
@@ -84,6 +110,8 @@ export async function POST() {
       summariesSucceeded: succeeded,
       summariesFailed: failed.length,
       failures: failed.map((f) => ({ topic: f.topic, error: f.error })),
+      diagnostics,
+      articleSamples,
       briefingDate: getKSTDateString(),
       timestamp: new Date().toISOString(),
     });
