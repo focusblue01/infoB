@@ -76,7 +76,7 @@ export async function collectNews(): Promise<{ collected: number; skipped: numbe
 
   // 4a. 카테고리별 NewsAPI 수집
   for (const group of categoryGroups) {
-    const articles = await fetchByCategory(group.group_key, { pageSize: 20 });
+    const articles = await fetchByCategory(group.group_key, { pageSize: 50 });
     for (const a of articles) {
       allArticles.push(a);
       articleCategoryMap.set(a.externalId, group.group_key as NewsCategory);
@@ -88,7 +88,7 @@ export async function collectNews(): Promise<{ collected: number; skipped: numbe
   const allKeywords = keywordGroups.map((g: any) => g.group_key);
   for (let i = 0; i < allKeywords.length; i += kwBatchSize) {
     const batch = allKeywords.slice(i, i + kwBatchSize);
-    const articles = await fetchByKeywords(batch, { pageSize: 20 });
+    const articles = await fetchByKeywords(batch, { pageSize: 50 });
     for (const a of articles) {
       allArticles.push(a);
       if (!articleKeywordMap.has(a.externalId)) {

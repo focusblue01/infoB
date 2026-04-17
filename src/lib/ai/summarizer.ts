@@ -159,8 +159,16 @@ export async function generateSummaries(): Promise<SummaryResult[]> {
     }
 
     try {
-      // 최근 24시간 기사 조회
       const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+
+      // 사용자 다른 관심 키워드 조회 (연관 분석용)
+      const { data: allGroups } = await supabase
+        .from("interest_groups")
+        .select("group_key, group_type")
+        .eq("is_active", true);
+      const relatedKeywords = (allGroups ?? [])
+        .filter((g: any) => g.group_type === "keyword" && g.group_key !== group.group_key)
+        .map((g: any) => g.group_key);
 
       let query = supabase
         .from("articles")
@@ -168,12 +176,11 @@ export async function generateSummaries(): Promise<SummaryResult[]> {
         .gte("collected_at", yesterday)
         .order("is_major", { ascending: false })
         .order("published_at", { ascending: false })
-        .limit(10);
+        .limit(15);
 
       if (group.group_type === "category") {
         query = query.eq("category", group.group_key);
       } else {
-        // 키워드 매칭: matched_keywords 배열에 포함
         query = query.contains("matched_keywords", [group.group_key]);
       }
 
@@ -191,14 +198,23 @@ export async function generateSummaries(): Promise<SummaryResult[]> {
           ? CATEGORY_LABELS[group.group_key as NewsCategory] ?? group.group_key
           : group.group_key;
 
-      // Claude API 호출
+      // 각 기사와 연관된 다른 관심 키워드 계산
+      const articlesWithRelations = articles.map((a: any) => {
+        const matched = a.matched_keywords ?? [];
+        const related = matched.filter((k: string) => relatedKeywords.includes(k) && k !== group.group_key);
+        return { ...a, _related: related };
+      });
+
+      // AI 호출
       const userPrompt = buildUserPrompt(
         topic,
-        articles.map((a: any) => ({
+        articlesWithRelations.map((a: any) => ({
           title: a.title,
           description: a.description,
           content: a.content,
-        }))
+          relatedKeywords: a._related,
+        })),
+        relatedKeywords
       );
 
       const { content: rawResponse, inputTokens, outputTokens, modelUsed } =
