@@ -2,6 +2,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { getAnthropicClient, getGeminiClient, getProvider } from "./client";
 import { SYSTEM_PROMPT, PROMPT_VERSION, buildUserPrompt } from "./prompts";
 import { CATEGORY_LABELS, type NewsCategory } from "@/types";
+import { getKSTDateString } from "@/lib/date";
 
 const ANTHROPIC_MODEL = "claude-sonnet-4-6";
 const GEMINI_MODEL = "gemini-1.5-flash";
@@ -133,7 +134,7 @@ function parseSummaryResponse(text: string): { title: string; content: string } 
 export async function generateSummaries(): Promise<SummaryResult[]> {
   const supabase = createAdminClient();
   const results: SummaryResult[] = [];
-  const today = new Date().toISOString().split("T")[0];
+  const today = getKSTDateString();
 
   // 활성 interest_groups 조회
   const { data: groups } = await supabase

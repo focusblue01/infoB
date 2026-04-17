@@ -17,20 +17,26 @@ interface SummaryItem {
   is_bookmarked: boolean;
 }
 
+function getKSTDate(): string {
+  const now = new Date();
+  const kst = new Date(now.getTime() + 9 * 60 * 60 * 1000);
+  return kst.toISOString().split("T")[0];
+}
+
 export default function FeedPage() {
-  const [date, setDate] = useState(() => new Date().toISOString().split("T")[0]);
+  const [date, setDate] = useState(() => getKSTDate());
   const [summaries, setSummaries] = useState<SummaryItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
   const [generateMsg, setGenerateMsg] = useState<string | null>(null);
 
   useEffect(() => {
-    fetchFeed();
+    fetchFeed(date);
   }, [date]);
 
-  async function fetchFeed() {
+  async function fetchFeed(targetDate: string) {
     setLoading(true);
-    const res = await fetch(`/api/feed?date=${date}`);
+    const res = await fetch(`/api/feed?date=${targetDate}`);
     const data = await res.json();
     setSummaries(data.summaries ?? []);
     setLoading(false);
@@ -48,9 +54,13 @@ export default function FeedPage() {
         setGenerateMsg(
           `✅ 수집 ${data.collected}건 / 브리핑 ${data.summariesSucceeded}개 생성`
         );
-        // 오늘 날짜로 이동하면서 새로 고침
-        setDate(new Date().toISOString().split("T")[0]);
-        await fetchFeed();
+        const today = getKSTDate();
+        // date가 이미 오늘이면 직접 fetchFeed, 다르면 setDate가 useEffect 트리거
+        if (date === today) {
+          await fetchFeed(today);
+        } else {
+          setDate(today);
+        }
       }
     } catch (e: any) {
       setGenerateMsg(`❌ ${e.message}`);
@@ -86,7 +96,7 @@ export default function FeedPage() {
     );
   }
 
-  const today = new Date().toISOString().split("T")[0];
+  const today = getKSTDate();
   const isToday = date === today;
 
   return (

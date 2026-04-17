@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { getKSTDateString, getKSTYesterday } from "@/lib/date";
 
 export async function GET(request: Request) {
   const supabase = await createClient();
@@ -7,7 +8,7 @@ export async function GET(request: Request) {
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { searchParams } = new URL(request.url);
-  const date = searchParams.get("date") ?? new Date().toISOString().split("T")[0];
+  const date = searchParams.get("date") ?? getKSTDateString();
 
   // 사용자 관심사 조회
   const [catRes, kwRes] = await Promise.all([
@@ -68,7 +69,7 @@ export async function GET(request: Request) {
   }));
 
   // 스트릭 업데이트
-  const today = new Date().toISOString().split("T")[0];
+  const today = getKSTDateString();
   if (date === today) {
     const { data: profile } = await supabase
       .from("profiles")
@@ -78,7 +79,7 @@ export async function GET(request: Request) {
 
     if (profile) {
       const lastRead = profile.last_read_date;
-      const yesterday = new Date(Date.now() - 86400000).toISOString().split("T")[0];
+      const yesterday = getKSTYesterday();
 
       let newStreak = profile.streak_count;
       if (lastRead === yesterday) {

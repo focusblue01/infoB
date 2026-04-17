@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { collectNews } from "@/lib/news/collector";
 import { generateSummaries } from "@/lib/ai/summarizer";
+import { getKSTDateString } from "@/lib/date";
 
 export const maxDuration = 300;
 
@@ -81,6 +82,7 @@ export async function POST() {
       summariesSucceeded: succeeded,
       summariesFailed: failed.length,
       failures: failed.map((f) => ({ topic: f.topic, error: f.error })),
+      briefingDate: getKSTDateString(),
       timestamp: new Date().toISOString(),
     });
   } catch (error: any) {
