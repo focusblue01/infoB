@@ -1,9 +1,10 @@
 import { createAdminClient } from "@/lib/supabase/admin";
-import { getAnthropicClient } from "./client";
+import { getAnthropicClient, getGeminiClient, getProvider } from "./client";
 import { SYSTEM_PROMPT, PROMPT_VERSION, buildUserPrompt } from "./prompts";
 import { CATEGORY_LABELS, type NewsCategory } from "@/types";
 
-const MODEL = "claude-sonnet-4-6";
+const ANTHROPIC_MODEL = "claude-sonnet-4-6";
+const GEMINI_MODEL = "gemini-1.5-flash";
 const MAX_RETRIES = 3;
 
 interface SummaryResult {
@@ -13,23 +14,30 @@ interface SummaryResult {
   error?: string;
 }
 
-async function callClaudeWithRetry(
+interface AIResponse {
+  content: string;
+  inputTokens: number;
+  outputTokens: number;
+  modelUsed: string;
+}
+
+async function callAnthropicWithRetry(
   systemPrompt: string,
   userPrompt: string,
   retries = MAX_RETRIES
-): Promise<{ content: string; inputTokens: number; outputTokens: number }> {
+): Promise<AIResponse> {
   const client = getAnthropicClient();
 
   for (let attempt = 1; attempt <= retries; attempt++) {
     try {
       const response = await client.messages.create({
-        model: MODEL,
+        model: ANTHROPIC_MODEL,
         max_tokens: 2048,
         system: [
           {
             type: "text",
             text: systemPrompt,
-            cache_control: { type: "ephemeral" }, // 프롬프트 캐싱
+            cache_control: { type: "ephemeral" },
           },
         ],
         messages: [{ role: "user", content: userPrompt }],
@@ -40,16 +48,57 @@ async function callClaudeWithRetry(
         content: textBlock?.text ?? "",
         inputTokens: response.usage.input_tokens,
         outputTokens: response.usage.output_tokens,
+        modelUsed: ANTHROPIC_MODEL,
       };
     } catch (error: any) {
-      console.error(`Claude API attempt ${attempt}/${retries} failed:`, error.message);
+      console.error(`Anthropic API attempt ${attempt}/${retries} failed:`, error.message);
       if (attempt === retries) throw error;
-      // Exponential backoff: 2s, 4s, 8s
       await new Promise((r) => setTimeout(r, 2000 * Math.pow(2, attempt - 1)));
     }
   }
-
   throw new Error("Max retries reached");
+}
+
+async function callGeminiWithRetry(
+  systemPrompt: string,
+  userPrompt: string,
+  retries = MAX_RETRIES
+): Promise<AIResponse> {
+  const client = getGeminiClient();
+  const model = client.getGenerativeModel({
+    model: GEMINI_MODEL,
+    systemInstruction: systemPrompt,
+  });
+
+  for (let attempt = 1; attempt <= retries; attempt++) {
+    try {
+      const result = await model.generateContent(userPrompt);
+      const text = result.response.text();
+      const usage = result.response.usageMetadata;
+      return {
+        content: text,
+        inputTokens: usage?.promptTokenCount ?? 0,
+        outputTokens: usage?.candidatesTokenCount ?? 0,
+        modelUsed: GEMINI_MODEL,
+      };
+    } catch (error: any) {
+      console.error(`Gemini API attempt ${attempt}/${retries} failed:`, error.message);
+      if (attempt === retries) throw error;
+      await new Promise((r) => setTimeout(r, 2000 * Math.pow(2, attempt - 1)));
+    }
+  }
+  throw new Error("Max retries reached");
+}
+
+async function callAIWithRetry(
+  systemPrompt: string,
+  userPrompt: string
+): Promise<AIResponse> {
+  const provider = getProvider();
+  if (provider === "gemini") {
+    return callGeminiWithRetry(systemPrompt, userPrompt);
+  }
+  return callAnthropicWithRetry(systemPrompt, userPrompt);
 }
 
 function parseSummaryResponse(text: string): { title: string; content: string } {
@@ -151,8 +200,8 @@ export async function generateSummaries(): Promise<SummaryResult[]> {
         }))
       );
 
-      const { content: rawResponse, inputTokens, outputTokens } =
-        await callClaudeWithRetry(SYSTEM_PROMPT, userPrompt);
+      const { content: rawResponse, inputTokens, outputTokens, modelUsed } =
+        await callAIWithRetry(SYSTEM_PROMPT, userPrompt);
 
       const { title, content } = parseSummaryResponse(rawResponse);
 
@@ -166,7 +215,7 @@ export async function generateSummaries(): Promise<SummaryResult[]> {
         article_ids: articles.map((a: any) => a.id),
         briefing_date: today,
         prompt_version: PROMPT_VERSION,
-        model_used: MODEL,
+        model_used: modelUsed,
         token_count: inputTokens + outputTokens,
       });
 
