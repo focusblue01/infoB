@@ -1,6 +1,6 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getAnthropicClient, getGeminiClient, getProvider } from "./client";
-import { SYSTEM_PROMPT, PROMPT_VERSION, buildUserPrompt } from "./prompts";
+import { SYSTEM_PROMPT, TRANSLATION_SYSTEM_PROMPT, PROMPT_VERSION, buildUserPrompt, buildTranslationPrompt } from "./prompts";
 import { CATEGORY_LABELS, type NewsCategory } from "@/types";
 import { getKSTDateString } from "@/lib/date";
 
@@ -108,26 +108,21 @@ function parseSummaryResponse(text: string): { title: string; content: string } 
   let title = "";
   let contentStart = 0;
 
-  // "제목: ..." 패턴 찾기
   for (let i = 0; i < lines.length; i++) {
-    if (lines[i].startsWith("제목:") || lines[i].startsWith("제목 :")) {
-      title = lines[i].replace(/^제목\s*:\s*/, "").trim();
+    const line = lines[i];
+    if (line.match(/^(제목|Title)\s*:/i)) {
+      title = line.replace(/^(제목|Title)\s*:\s*/i, "").trim();
       contentStart = i + 1;
       break;
     }
   }
 
-  // 제목을 못 찾으면 첫 줄을 제목으로
   if (!title && lines.length > 0) {
     title = lines[0].replace(/^#+\s*/, "").trim();
     contentStart = 1;
   }
 
-  const content = lines
-    .slice(contentStart)
-    .join("\n")
-    .trim();
-
+  const content = lines.slice(contentStart).join("\n").trim();
   return { title, content };
 }
 
@@ -217,8 +212,16 @@ export async function generateSummaries(): Promise<SummaryResult[]> {
         relatedKeywords
       );
 
-      const { content: rawResponse, inputTokens, outputTokens, modelUsed } =
+      // 1단계: 영문 분석
+      const { content: englishBriefing, inputTokens: t1In, outputTokens: t1Out } =
         await callAIWithRetry(SYSTEM_PROMPT, userPrompt);
+
+      // 2단계: 한국어 번역
+      const { content: rawResponse, inputTokens: t2In, outputTokens: t2Out, modelUsed } =
+        await callAIWithRetry(TRANSLATION_SYSTEM_PROMPT, buildTranslationPrompt(englishBriefing));
+
+      const inputTokens = t1In + t2In;
+      const outputTokens = t1Out + t2Out;
 
       const { title, content } = parseSummaryResponse(rawResponse);
 
