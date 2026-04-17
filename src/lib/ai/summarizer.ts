@@ -1,6 +1,6 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getAnthropicClient, getGeminiClient, getProvider } from "./client";
-import { SYSTEM_PROMPT, TRANSLATION_SYSTEM_PROMPT, PROMPT_VERSION, buildUserPrompt, buildTranslationPrompt } from "./prompts";
+import { SYSTEM_PROMPT, PROMPT_VERSION, buildUserPrompt } from "./prompts";
 import { CATEGORY_LABELS, type NewsCategory } from "@/types";
 import { getKSTDateString } from "@/lib/date";
 
@@ -128,128 +128,105 @@ function parseSummaryResponse(text: string): { title: string; content: string } 
 
 export async function generateSummaries(): Promise<SummaryResult[]> {
   const supabase = createAdminClient();
-  const results: SummaryResult[] = [];
   const today = getKSTDateString();
+  const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
 
-  // 활성 interest_groups 조회
-  const { data: groups } = await supabase
-    .from("interest_groups")
-    .select("*")
-    .eq("is_active", true);
+  // 활성 그룹 + 오늘 생성분 + 최근 기사 모두 병렬 조회
+  const [groupsRes, existingRes, articlesRes] = await Promise.all([
+    supabase.from("interest_groups").select("*").eq("is_active", true),
+    supabase.from("summaries").select("interest_group_id").eq("briefing_date", today),
+    supabase
+      .from("articles")
+      .select("*")
+      .gte("collected_at", yesterday)
+      .order("is_major", { ascending: false })
+      .order("published_at", { ascending: false })
+      .limit(500),
+  ]);
 
-  if (!groups?.length) return results;
+  const groups = groupsRes.data ?? [];
+  const existing = existingRes.data ?? [];
+  const allArticles = articlesRes.data ?? [];
 
-  // 오늘 이미 생성된 요약 확인
-  const { data: existing } = await supabase
-    .from("summaries")
-    .select("interest_group_id")
-    .eq("briefing_date", today);
+  if (!groups.length) return [];
 
-  const existingGroupIds = new Set((existing ?? []).map((e: any) => e.interest_group_id));
+  const existingGroupIds = new Set(existing.map((e: any) => e.interest_group_id));
+  const relatedKeywordsAll = groups
+    .filter((g: any) => g.group_type === "keyword")
+    .map((g: any) => g.group_key);
 
-  for (const group of groups) {
+  // 그룹별 병렬 처리
+  const tasks = groups.map(async (group: any): Promise<SummaryResult> => {
     if (existingGroupIds.has(group.id)) {
-      results.push({ groupId: group.id, topic: group.group_key, success: true });
-      continue;
+      return { groupId: group.id, topic: group.group_key, success: true };
     }
 
     try {
-      const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-
-      // 사용자 다른 관심 키워드 조회 (연관 분석용)
-      const { data: allGroups } = await supabase
-        .from("interest_groups")
-        .select("group_key, group_type")
-        .eq("is_active", true);
-      const relatedKeywords = (allGroups ?? [])
-        .filter((g: any) => g.group_type === "keyword" && g.group_key !== group.group_key)
-        .map((g: any) => g.group_key);
-
-      let query = supabase
-        .from("articles")
-        .select("*")
-        .gte("collected_at", yesterday)
-        .order("is_major", { ascending: false })
-        .order("published_at", { ascending: false })
-        .limit(15);
-
+      // 그룹에 맞는 기사 필터 (메모리에서)
+      let matched: any[];
       if (group.group_type === "category") {
-        query = query.eq("category", group.group_key);
+        matched = allArticles.filter((a: any) => a.category === group.group_key);
       } else {
-        query = query.contains("matched_keywords", [group.group_key]);
+        matched = allArticles.filter(
+          (a: any) => (a.matched_keywords ?? []).includes(group.group_key)
+        );
       }
 
-      const { data: articles } = await query;
+      matched = matched.slice(0, 12);
 
-      // 기사 3건 미만이면 스킵
-      if (!articles || articles.length < 3) {
-        results.push({ groupId: group.id, topic: group.group_key, success: true });
-        continue;
+      if (matched.length < 3) {
+        return { groupId: group.id, topic: group.group_key, success: true };
       }
 
-      // 토픽 이름 결정
       const topic =
         group.group_type === "category"
           ? CATEGORY_LABELS[group.group_key as NewsCategory] ?? group.group_key
           : group.group_key;
 
-      // 각 기사와 연관된 다른 관심 키워드 계산
-      const articlesWithRelations = articles.map((a: any) => {
-        const matched = a.matched_keywords ?? [];
-        const related = matched.filter((k: string) => relatedKeywords.includes(k) && k !== group.group_key);
-        return { ...a, _related: related };
-      });
+      const relatedKeywords = relatedKeywordsAll.filter((k: string) => k !== group.group_key);
 
-      // AI 호출
       const userPrompt = buildUserPrompt(
         topic,
-        articlesWithRelations.map((a: any) => ({
+        matched.map((a: any) => ({
           title: a.title,
           description: a.description,
           content: a.content,
-          relatedKeywords: a._related,
+          relatedKeywords: (a.matched_keywords ?? []).filter(
+            (k: string) => relatedKeywords.includes(k) && k !== group.group_key
+          ),
         })),
         relatedKeywords
       );
 
-      // 1단계: 영문 분석
-      const { content: englishBriefing, inputTokens: t1In, outputTokens: t1Out } =
+      const { content: rawResponse, inputTokens, outputTokens, modelUsed } =
         await callAIWithRetry(SYSTEM_PROMPT, userPrompt);
-
-      // 2단계: 한국어 번역
-      const { content: rawResponse, inputTokens: t2In, outputTokens: t2Out, modelUsed } =
-        await callAIWithRetry(TRANSLATION_SYSTEM_PROMPT, buildTranslationPrompt(englishBriefing));
-
-      const inputTokens = t1In + t2In;
-      const outputTokens = t1Out + t2Out;
 
       const { title, content } = parseSummaryResponse(rawResponse);
 
-      // 요약 저장
       await supabase.from("summaries").insert({
         interest_group_id: group.id,
         title: title || `${topic} 브리핑`,
         content,
         category: group.group_type === "category" ? group.group_key : null,
         keywords: group.group_type === "keyword" ? [group.group_key, ...(group.similar_keywords ?? [])] : [],
-        article_ids: articles.map((a: any) => a.id),
+        article_ids: matched.map((a: any) => a.id),
         briefing_date: today,
         prompt_version: PROMPT_VERSION,
         model_used: modelUsed,
         token_count: inputTokens + outputTokens,
       });
 
-      results.push({ groupId: group.id, topic: group.group_key, success: true });
+      return { groupId: group.id, topic: group.group_key, success: true };
     } catch (error: any) {
-      console.error(`Summary generation failed for ${group.group_key}:`, error.message);
-      results.push({
+      console.error(`Summary failed for ${group.group_key}:`, error.message);
+      return {
         groupId: group.id,
         topic: group.group_key,
         success: false,
         error: error.message,
-      });
+      };
     }
-  }
+  });
 
-  return results;
+  return Promise.all(tasks);
 }

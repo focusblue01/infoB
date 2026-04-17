@@ -67,36 +67,51 @@ export async function collectNews(): Promise<{ collected: number; skipped: numbe
     .eq("is_active", true);
 
   const allArticles: RawArticle[] = [];
-  // 카테고리/키워드별로 추적
   const articleCategoryMap = new Map<string, NewsCategory>();
   const articleKeywordMap = new Map<string, Set<string>>();
 
   const categoryGroups = groups.filter((g: any) => g.group_type === "category");
   const keywordGroups = groups.filter((g: any) => g.group_type === "keyword");
+  const allKeywords = keywordGroups.map((g: any) => g.group_key);
 
-  // 4a. 카테고리별 NewsAPI 수집
-  for (const group of categoryGroups) {
-    const articles = await fetchByCategory(group.group_key, { pageSize: 50 });
-    for (const a of articles) {
+  // 모든 fetch를 병렬로 실행
+  const kwBatchSize = 5;
+  const keywordBatches: string[][] = [];
+  for (let i = 0; i < allKeywords.length; i += kwBatchSize) {
+    keywordBatches.push(allKeywords.slice(i, i + kwBatchSize));
+  }
+
+  const [categoryResults, keywordResults, rssResults] = await Promise.all([
+    Promise.all(
+      categoryGroups.map((g: any) =>
+        fetchByCategory(g.group_key, { pageSize: 50 }).then((arts) => ({ group: g, arts }))
+      )
+    ),
+    Promise.all(
+      keywordBatches.map((batch) =>
+        fetchByKeywords(batch, { pageSize: 50 }).then((arts) => ({ batch, arts }))
+      )
+    ),
+    Promise.all((rssSources ?? []).map((s: any) => fetchRssFeed(s.url, s.name))),
+  ]);
+
+  // 카테고리 결과 취합
+  for (const { group, arts } of categoryResults) {
+    for (const a of arts) {
       allArticles.push(a);
       articleCategoryMap.set(a.externalId, group.group_key as NewsCategory);
     }
   }
 
-  // 4b. 키워드 배치 NewsAPI 수집 (OR 쿼리로 배치)
-  const kwBatchSize = 5;
-  const allKeywords = keywordGroups.map((g: any) => g.group_key);
-  for (let i = 0; i < allKeywords.length; i += kwBatchSize) {
-    const batch = allKeywords.slice(i, i + kwBatchSize);
-    const articles = await fetchByKeywords(batch, { pageSize: 50 });
-    for (const a of articles) {
+  // 키워드 결과 취합
+  for (const { batch, arts } of keywordResults) {
+    for (const a of arts) {
       allArticles.push(a);
       if (!articleKeywordMap.has(a.externalId)) {
         articleKeywordMap.set(a.externalId, new Set());
       }
       const set = articleKeywordMap.get(a.externalId)!;
       for (const kw of a.matchedKeywords) set.add(kw);
-      // 배치 내 모든 키워드도 후보로 체크
       const text = `${a.title} ${a.description ?? ""}`.toLowerCase();
       for (const kw of batch) {
         if (text.includes(kw.toLowerCase())) set.add(kw);
@@ -104,14 +119,16 @@ export async function collectNews(): Promise<{ collected: number; skipped: numbe
     }
   }
 
-  // 5. RSS 수집
-  for (const source of rssSources ?? []) {
-    const articles = await fetchRssFeed(source.url, source.name);
-    allArticles.push(...articles);
+  // RSS 결과 취합
+  for (const arts of rssResults) {
+    allArticles.push(...arts);
   }
 
-  // 6. 제외 필터
+  // 6. 제외 필터 + 중복 제거 (externalId 기준)
+  const seen = new Set<string>();
   const filtered = allArticles.filter((a) => {
+    if (seen.has(a.externalId)) return false;
+    seen.add(a.externalId);
     const text = `${a.title} ${a.description ?? ""}`.toLowerCase();
     return !Array.from(excludeSet).some((kw) => text.includes(kw));
   });
@@ -119,33 +136,37 @@ export async function collectNews(): Promise<{ collected: number; skipped: numbe
   // 7. 클러스터링
   const majorMap = markMajorArticles(filtered);
 
-  // 8. DB 삽입 (중복 무시)
+  // 8. 배치 upsert (한 번에 삽입)
+  const rows = filtered.map((article) => ({
+    external_id: article.externalId,
+    source_name: article.sourceName,
+    source_url: article.sourceUrl,
+    title: article.title,
+    description: article.description,
+    content: article.content,
+    image_url: article.imageUrl,
+    author: article.author,
+    category: articleCategoryMap.get(article.externalId) ?? null,
+    matched_keywords: Array.from(articleKeywordMap.get(article.externalId) ?? new Set<string>()),
+    is_major: majorMap.get(article.externalId) ?? false,
+    published_at: article.publishedAt,
+  }));
+
   let collected = 0;
   let skipped = 0;
-
-  for (const article of filtered) {
-    const category = articleCategoryMap.get(article.externalId) ?? null;
-    const matchedKws = Array.from(articleKeywordMap.get(article.externalId) ?? new Set<string>());
-
-    const { error } = await supabase.from("articles").insert({
-      external_id: article.externalId,
-      source_name: article.sourceName,
-      source_url: article.sourceUrl,
-      title: article.title,
-      description: article.description,
-      content: article.content,
-      image_url: article.imageUrl,
-      author: article.author,
-      category,
-      matched_keywords: matchedKws,
-      is_major: majorMap.get(article.externalId) ?? false,
-      published_at: article.publishedAt,
-    });
-
-    if (error?.code === "23505") {
-      skipped++;
-    } else if (!error) {
-      collected++;
+  const chunkSize = 100;
+  for (let i = 0; i < rows.length; i += chunkSize) {
+    const chunk = rows.slice(i, i + chunkSize);
+    const { data, error } = await supabase
+      .from("articles")
+      .upsert(chunk, { onConflict: "external_id", ignoreDuplicates: true })
+      .select("id");
+    if (error) {
+      skipped += chunk.length;
+    } else {
+      const inserted = data?.length ?? 0;
+      collected += inserted;
+      skipped += chunk.length - inserted;
     }
   }
 

@@ -1,60 +1,38 @@
-export const SYSTEM_PROMPT = `You are a news analyst. Analyze the provided articles and write a structured English briefing of 600-900 words.
+export const SYSTEM_PROMPT = `You are a news analyst. Analyze the articles and output a Korean briefing (600-900 characters).
 
-Format:
-Title: [Brief title]
+Output format (Korean, strictly):
+제목: [간결한 제목]
 
-[Key Summary] 3 sentences summarizing core content.
+[핵심 요약]
+3문장.
 
-[Analysis] Analyze background, causes, and impact. Actively discuss connections to other listed keywords of interest and ripple effects on markets/industries.
+[상세 분석]
+배경, 원인, 영향. 연관 키워드와의 관계 및 산업/시장 파급효과 포함.
 
-[Key Takeaways] 2-3 core insights. Include potential impact on other areas of interest.
+[주목 포인트]
+2-3가지 핵심 시사점.
 
-Rules:
-- Write in English only.
-- Be objective but provide useful insights.
-- If "related keywords" are provided, analyze their relationship with the topic.
-- Avoid advertising content or political bias.
-- Output must start with "Title: ..." then empty line then body.`;
+Rules: Korean output only. Objective. No ads/bias. Think in English internally but write Korean.`;
 
-export const TRANSLATION_SYSTEM_PROMPT = `You are a professional Korean translator. Translate the following English news briefing into natural, fluent Korean while preserving the structure and meaning.
-
-Rules:
-- Translate all section headers: [Key Summary] → [핵심 요약], [Analysis] → [상세 분석], [Key Takeaways] → [주목 포인트]
-- Translate "Title:" → "제목:"
-- Keep brand names, proper nouns, and ticker symbols as-is unless a standard Korean equivalent exists
-- Use natural Korean news writing style
-- Output only the translation, no commentary`;
-
-export const PROMPT_VERSION = "v3-en-translate";
+export const PROMPT_VERSION = "v4-fast";
 
 export function buildUserPrompt(
   topic: string,
   articles: { title: string; description: string | null; content: string | null; relatedKeywords?: string[] }[],
   userRelatedKeywords?: string[]
 ): string {
+  // 간결하게 — title만 주로 사용, description은 1줄로 자름
   const articleTexts = articles
     .map((a, i) => {
-      const parts = [`Article ${i + 1}: ${a.title}`];
-      if (a.description) parts.push(`Summary: ${a.description}`);
-      if (a.content) parts.push(`Content: ${a.content}`);
-      if (a.relatedKeywords && a.relatedKeywords.length > 0) {
-        parts.push(`Related keywords in this article: ${a.relatedKeywords.join(", ")}`);
-      }
-      return parts.join("\n");
+      const desc = a.description ? a.description.slice(0, 200) : "";
+      const rel = a.relatedKeywords?.length ? ` [rel: ${a.relatedKeywords.join(",")}]` : "";
+      return `${i + 1}. ${a.title}${rel}\n   ${desc}`;
     })
-    .join("\n\n---\n\n");
+    .join("\n");
 
-  const relatedContext = userRelatedKeywords && userRelatedKeywords.length > 0
-    ? `\nUser's other keywords of interest: ${userRelatedKeywords.join(", ")}\nAnalyze the connection between these keywords and "${topic}".\n`
+  const related = userRelatedKeywords?.length
+    ? `\nRelated keywords: ${userRelatedKeywords.join(", ")}`
     : "";
 
-  return `Topic: ${topic}
-${relatedContext}
-Analyze the following ${articles.length} articles and write a briefing.
-
-${articleTexts}`;
-}
-
-export function buildTranslationPrompt(englishBriefing: string): string {
-  return `Translate the following English briefing into Korean:\n\n${englishBriefing}`;
+  return `Topic: ${topic}${related}\n\n${articles.length} articles:\n${articleTexts}`;
 }
