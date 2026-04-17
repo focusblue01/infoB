@@ -5,7 +5,7 @@ import { CATEGORY_LABELS, type NewsCategory } from "@/types";
 import { getKSTDateString } from "@/lib/date";
 
 const ANTHROPIC_MODEL = "claude-sonnet-4-6";
-const GEMINI_MODEL = "gemini-1.5-flash";
+const GEMINI_MODEL = "gemini-2.5-flash";
 const MAX_RETRIES = 3;
 
 interface SummaryResult {

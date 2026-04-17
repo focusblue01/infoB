@@ -80,27 +80,32 @@ export async function fetchByCategory(
   const apiKey = process.env.NEWSAPI_ORG_KEY;
   if (!apiKey) throw new Error("NEWSAPI_ORG_KEY is not set");
 
-  // NewsAPI category mapping
-  const categoryMap: Record<string, string> = {
-    technology: "technology",
-    economy: "business",
-    politics: "general",
-    society: "general",
-    culture: "entertainment",
-    sports: "sports",
-    science: "science",
-    global: "general",
+  // 카테고리 → 한국어 검색 쿼리 매핑 (everything API로 한국 뉴스 수집)
+  const queryMap: Record<string, string> = {
+    technology: "IT OR 테크 OR 기술 OR 인공지능",
+    economy: "경제 OR 금융 OR 주식 OR 증시",
+    politics: "정치 OR 국회 OR 대통령",
+    society: "사회 OR 사건 OR 이슈",
+    culture: "문화 OR 영화 OR 음악",
+    sports: "스포츠 OR 야구 OR 축구",
+    science: "과학 OR 연구 OR 기술",
+    global: "국제 OR 해외",
   };
 
   const params = new URLSearchParams({
-    category: categoryMap[category] ?? "general",
-    country: options?.country ?? "kr",
+    q: queryMap[category] ?? category,
+    sortBy: "publishedAt",
     pageSize: String(options?.pageSize ?? 20),
+    language: "ko",
     apiKey,
   });
 
-  const res = await fetch(`${BASE_URL}/top-headlines?${params}`);
-  if (!res.ok) return [];
+  const res = await fetch(`${BASE_URL}/everything?${params}`);
+  if (!res.ok) {
+    const body = await res.text();
+    console.error("NewsAPI category fetch error:", res.status, body);
+    return [];
+  }
 
   const data = await res.json();
   const articles: NewsAPIArticle[] = data.articles ?? [];
