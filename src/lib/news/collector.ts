@@ -119,9 +119,20 @@ export async function collectNews(): Promise<{ collected: number; skipped: numbe
     }
   }
 
-  // RSS 결과 취합
+  // RSS 결과 취합 + 키워드 매핑
   for (const arts of rssResults) {
-    allArticles.push(...arts);
+    for (const a of arts) {
+      allArticles.push(a);
+      // RSS 기사도 키워드 그룹 매핑 (category는 null로 유지)
+      const text = `${a.title} ${a.description ?? ""}`.toLowerCase();
+      if (!articleKeywordMap.has(a.externalId)) {
+        articleKeywordMap.set(a.externalId, new Set());
+      }
+      const kwSet = articleKeywordMap.get(a.externalId)!;
+      for (const kw of allKeywords) {
+        if (text.includes(kw.toLowerCase())) kwSet.add(kw);
+      }
+    }
   }
 
   // 6. 제외 필터 + 중복 제거 (externalId 기준)
