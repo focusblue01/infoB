@@ -3,6 +3,7 @@
 import { CATEGORIES, MAX_CATEGORIES } from "@/lib/constants";
 import type { NewsCategory } from "@/types";
 import { cn } from "@/lib/utils";
+import { useLanguage } from "@/lib/language-context";
 
 interface CategorySelectorProps {
   selected: NewsCategory[];
@@ -10,6 +11,8 @@ interface CategorySelectorProps {
 }
 
 export function CategorySelector({ selected, onChange }: CategorySelectorProps) {
+  const { t } = useLanguage();
+
   function toggle(cat: NewsCategory) {
     if (selected.includes(cat)) {
       onChange(selected.filter((c) => c !== cat));
@@ -43,7 +46,7 @@ export function CategorySelector({ selected, onChange }: CategorySelectorProps) 
             >
               <span className="text-2xl">{cat.emoji}</span>
               <span className={cn("text-sm font-medium", active && "text-primary")}>
-                {cat.label}
+                {t.categoryLabels[cat.value]}
               </span>
             </button>
           );

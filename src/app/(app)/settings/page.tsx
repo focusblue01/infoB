@@ -13,19 +13,19 @@ import { KeywordInput } from "@/components/onboarding/KeywordInput";
 import { RssSourceInput } from "@/components/onboarding/RssSourceInput";
 import type { NewsCategory } from "@/types";
 import { Save, Loader2 } from "lucide-react";
+import { useLanguage } from "@/lib/language-context";
 
 export default function SettingsPage() {
   const router = useRouter();
+  const { t } = useLanguage();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
-  // Profile
   const [displayName, setDisplayName] = useState("");
   const [email, setEmail] = useState("");
   const [notificationEnabled, setNotificationEnabled] = useState(true);
   const [notificationTime, setNotificationTime] = useState("07:00");
 
-  // Interests
   const [categories, setCategories] = useState<NewsCategory[]>([]);
   const [keywords, setKeywords] = useState<string[]>([]);
   const [excludeKeywords, setExcludeKeywords] = useState<string[]>([]);
@@ -81,41 +81,41 @@ export default function SettingsPage() {
   return (
     <div className="space-y-6 max-w-3xl mx-auto">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">설정</h1>
+        <h1 className="text-2xl font-bold">{t.settings}</h1>
         <Button onClick={handleSave} disabled={saving} className="gap-1">
           {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-          저장
+          {saving ? t.saving : t.save}
         </Button>
       </div>
 
       {/* 계정 */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">계정</CardTitle>
-          <CardDescription>프로필 및 알림 설정</CardDescription>
+          <CardTitle className="text-lg">{t.account}</CardTitle>
+          <CardDescription>{t.accountDesc}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label>이름</Label>
+              <Label>{t.name}</Label>
               <Input value={displayName} onChange={(e) => setDisplayName(e.target.value)} />
             </div>
             <div className="space-y-2">
-              <Label>이메일</Label>
+              <Label>{t.email}</Label>
               <Input value={email} disabled />
             </div>
           </div>
           <Separator />
           <div className="flex items-center justify-between">
             <div>
-              <Label>이메일 브리핑 알림</Label>
-              <p className="text-sm text-muted-foreground">매일 아침 이메일로 브리핑을 받습니다</p>
+              <Label>{t.emailNotification}</Label>
+              <p className="text-sm text-muted-foreground">{t.emailNotificationDesc}</p>
             </div>
             <Switch checked={notificationEnabled} onCheckedChange={setNotificationEnabled} />
           </div>
           {notificationEnabled && (
             <div className="space-y-2">
-              <Label>알림 시간</Label>
+              <Label>{t.notificationTime}</Label>
               <Input type="time" value={notificationTime} onChange={(e) => setNotificationTime(e.target.value)} className="w-32" />
             </div>
           )}
@@ -125,12 +125,12 @@ export default function SettingsPage() {
       {/* 관심사 */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">관심사</CardTitle>
-          <CardDescription>뉴스 수집 및 요약에 사용되는 관심사 설정</CardDescription>
+          <CardTitle className="text-lg">{t.interests}</CardTitle>
+          <CardDescription>{t.interestsDesc}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
           <div className="space-y-3">
-            <Label>카테고리</Label>
+            <Label>{t.categoriesLabel}</Label>
             <CategorySelector selected={categories} onChange={setCategories} />
           </div>
           <Separator />
@@ -138,8 +138,6 @@ export default function SettingsPage() {
           <KeywordInput
             keywords={excludeKeywords}
             onChange={setExcludeKeywords}
-            label="제외 키워드"
-            placeholder="보고 싶지 않은 키워드"
             variant="exclude"
           />
           <Separator />

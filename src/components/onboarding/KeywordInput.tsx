@@ -5,23 +5,24 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { X } from "lucide-react";
 import { MAX_KEYWORDS } from "@/lib/constants";
+import { useLanguage } from "@/lib/language-context";
 
 interface KeywordInputProps {
   keywords: string[];
   onChange: (keywords: string[]) => void;
-  label?: string;
-  placeholder?: string;
   variant?: "include" | "exclude";
 }
 
 export function KeywordInput({
   keywords,
   onChange,
-  label = "관심 키워드",
-  placeholder = "키워드 입력 후 Enter",
   variant = "include",
 }: KeywordInputProps) {
   const [input, setInput] = useState("");
+  const { t } = useLanguage();
+
+  const label = variant === "exclude" ? t.excludeKeywordsLabel : t.interestKeywordsLabel;
+  const placeholder = variant === "exclude" ? t.excludeKeywordPlaceholder : t.keywordPlaceholder;
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
     if (e.key === "Enter" && input.trim()) {
