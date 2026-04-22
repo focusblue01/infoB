@@ -11,4 +11,5 @@ export const CATEGORIES: { value: NewsCategory; label: string; emoji: string }[]
   { value: "global", label: "글로벌", emoji: "🌍" },
 ];
 
-export const MAX_KEYWORDS = 20;
+export const MAX_KEYWORDS = 10;
+export const MAX_CATEGORIES = 4;
