@@ -30,6 +30,8 @@ export const CATEGORY_COLORS: Record<NewsCategory, string> = {
   global: "bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200",
 };
 
+export type UserRole = "A" | "T" | "N" | "R" | "S";
+
 export interface Profile {
   id: string;
   display_name: string | null;
@@ -39,6 +41,7 @@ export interface Profile {
   onboarding_completed: boolean;
   streak_count: number;
   last_read_date: string | null;
+  role: UserRole;
 }
 
 export interface UserKeyword {
