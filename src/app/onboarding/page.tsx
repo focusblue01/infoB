@@ -10,8 +10,9 @@ import { KeywordInput } from "@/components/onboarding/KeywordInput";
 import { RssSourceInput } from "@/components/onboarding/RssSourceInput";
 import type { NewsCategory } from "@/types";
 import { ArrowRight, ArrowLeft, Check } from "lucide-react";
+import { LanguageProvider, useLanguage } from "@/lib/language-context";
 
-export default function OnboardingPage() {
+function OnboardingContent() {
   const [step, setStep] = useState(0);
   const [categories, setCategories] = useState<NewsCategory[]>([]);
   const [keywords, setKeywords] = useState<string[]>([]);
@@ -19,6 +20,8 @@ export default function OnboardingPage() {
   const [rssSources, setRssSources] = useState<{ name: string; url: string }[]>([]);
   const [loading, setLoading] = useState(false);
   const router = useRouter();
+  const { t, language } = useLanguage();
+  const isKo = language === "ko";
 
   async function handleComplete() {
     setLoading(true);
@@ -28,11 +31,11 @@ export default function OnboardingPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ categories, keywords, excludeKeywords, rssSources }),
       });
-      if (!res.ok) throw new Error("저장 실패");
+      if (!res.ok) throw new Error("Failed to save");
       router.push("/feed");
       router.refresh();
     } catch {
-      alert("관심사 저장에 실패했습니다. 다시 시도해주세요.");
+      alert("Failed to save interests. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -40,36 +43,31 @@ export default function OnboardingPage() {
 
   const steps = [
     {
-      title: "관심 카테고리를 선택하세요",
-      desc: "관심 있는 뉴스 분야를 1개 이상 선택해주세요.",
+      title: isKo ? "관심 카테고리를 선택하세요" : "Select Your Interests",
+      desc: isKo
+        ? "관심 있는 뉴스 분야를 1개 이상 선택해주세요."
+        : "Choose at least one news category you're interested in.",
       content: <CategorySelector selected={categories} onChange={setCategories} />,
       valid: categories.length > 0,
     },
     {
-      title: "관심 키워드를 추가하세요",
-      desc: "구체적인 관심사를 키워드로 입력하세요. (예: AI, 반도체, 테슬라)",
+      title: isKo ? "관심 키워드를 추가하세요" : "Add Keywords",
+      desc: isKo
+        ? "구체적인 관심사를 키워드로 입력하세요. (예: AI, 반도체, 테슬라)"
+        : "Enter specific topics as keywords. (e.g. AI, semiconductors, Tesla)",
       content: (
         <div className="space-y-6">
-          <KeywordInput
-            keywords={keywords}
-            onChange={setKeywords}
-            label="관심 키워드"
-            placeholder="관심 키워드 입력 후 Enter"
-          />
-          <KeywordInput
-            keywords={excludeKeywords}
-            onChange={setExcludeKeywords}
-            label="제외 키워드"
-            placeholder="보고 싶지 않은 키워드 입력 후 Enter"
-            variant="exclude"
-          />
+          <KeywordInput keywords={keywords} onChange={setKeywords} />
+          <KeywordInput keywords={excludeKeywords} onChange={setExcludeKeywords} variant="exclude" />
         </div>
       ),
-      valid: true, // 키워드는 선택사항
+      valid: true,
     },
     {
-      title: "RSS 소스 추가 (선택)",
-      desc: "직접 추가하고 싶은 뉴스 소스의 RSS URL을 입력하세요.",
+      title: isKo ? "RSS 소스 추가 (선택)" : "Add RSS Sources (Optional)",
+      desc: isKo
+        ? "직접 추가하고 싶은 뉴스 소스의 RSS URL을 입력하세요."
+        : "Enter the RSS URL of any news source you'd like to add.",
       content: <RssSourceInput sources={rssSources} onChange={setRssSources} />,
       valid: true,
     },
@@ -103,7 +101,8 @@ export default function OnboardingPage() {
               disabled={step === 0}
               className="gap-1"
             >
-              <ArrowLeft className="h-4 w-4" /> 이전
+              <ArrowLeft className="h-4 w-4" />
+              {isKo ? "이전" : "Back"}
             </Button>
             {step < steps.length - 1 ? (
               <Button
@@ -111,18 +110,27 @@ export default function OnboardingPage() {
                 disabled={!current.valid}
                 className="gap-1"
               >
-                다음 <ArrowRight className="h-4 w-4" />
+                {isKo ? "다음" : "Next"} <ArrowRight className="h-4 w-4" />
               </Button>
             ) : (
               <Button onClick={handleComplete} disabled={loading || categories.length === 0} className="gap-1">
-                {loading ? "저장 중..." : (
-                  <>완료 <Check className="h-4 w-4" /></>
-                )}
+                {loading
+                  ? (isKo ? "저장 중..." : "Saving...")
+                  : <>{isKo ? "완료" : "Finish"} <Check className="h-4 w-4" /></>
+                }
               </Button>
             )}
           </div>
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+export default function OnboardingPage() {
+  return (
+    <LanguageProvider>
+      <OnboardingContent />
+    </LanguageProvider>
   );
 }
