@@ -1,6 +1,7 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { fetchByKeywords, fetchByCategory } from "./newsapi";
 import { fetchRssFeed } from "./rss";
+import { DEFAULT_RSS_SOURCES } from "./defaultSources";
 import type { RawArticle } from "./types";
 import type { NewsCategory } from "@/types";
 
@@ -60,11 +61,17 @@ export async function collectNews(): Promise<{ collected: number; skipped: numbe
     .eq("is_exclude", true);
   const excludeSet = new Set((excludeKws ?? []).map((k: any) => k.keyword.toLowerCase()));
 
-  // 3. RSS 소스 조회
-  const { data: rssSources } = await supabase
+  // 3. RSS 소스 조회 (기본 소스 + 사용자 등록 소스 병합, URL 중복 제거)
+  const { data: userSources } = await supabase
     .from("user_sources")
     .select("name, url")
     .eq("is_active", true);
+
+  const userUrls = new Set((userSources ?? []).map((s: any) => s.url));
+  const rssSources = [
+    ...DEFAULT_RSS_SOURCES.filter((s) => !userUrls.has(s.url)),
+    ...(userSources ?? []),
+  ];
 
   const allArticles: RawArticle[] = [];
   const articleCategoryMap = new Map<string, NewsCategory>();
