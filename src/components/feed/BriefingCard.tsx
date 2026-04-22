@@ -12,6 +12,9 @@ interface BriefingCardProps {
   id: string;
   title: string;
   content: string;
+  titleEn?: string | null;
+  contentEn?: string | null;
+  language?: "ko" | "en";
   category: NewsCategory | null;
   keywords: string[];
   articleCount: number;
@@ -20,8 +23,11 @@ interface BriefingCardProps {
 }
 
 export function BriefingCard({
-  id, title, content, category, keywords, articleCount, isBookmarked, onBookmarkToggle,
+  id, title, content, titleEn, contentEn, language = "ko",
+  category, keywords, articleCount, isBookmarked, onBookmarkToggle,
 }: BriefingCardProps) {
+  const displayTitle = language === "en" && titleEn ? titleEn : title;
+  const displayContent = language === "en" && contentEn ? contentEn : content;
   return (
     <Card className="group hover:shadow-md transition-shadow">
       <CardHeader className="pb-3">
@@ -37,7 +43,7 @@ export function BriefingCard({
             </div>
             <Link href={`/feed/${id}`}>
               <h3 className="font-semibold text-lg leading-tight group-hover:text-primary transition-colors cursor-pointer">
-                {title}
+                {displayTitle}
               </h3>
             </Link>
           </div>
@@ -47,7 +53,7 @@ export function BriefingCard({
       <CardContent>
         <Link href={`/feed/${id}`}>
           <p className="text-sm text-muted-foreground leading-relaxed cursor-pointer">
-            {truncate(content, 200)}
+            {truncate(displayContent, 200)}
           </p>
         </Link>
         <div className="flex items-center gap-1 mt-3 text-xs text-muted-foreground">

@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { BriefingCard } from "@/components/feed/BriefingCard";
 import { InterestsSummary } from "@/components/feed/InterestsSummary";
 import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
 import { ChevronLeft, ChevronRight, Newspaper, Sparkles, Loader2 } from "lucide-react";
 import { formatDate } from "@/lib/utils";
 
@@ -11,6 +12,8 @@ interface SummaryItem {
   id: string;
   title: string;
   content: string;
+  title_en: string | null;
+  content_en: string | null;
   category: string | null;
   keywords: string[];
   article_ids: string[];
@@ -29,6 +32,13 @@ export default function FeedPage() {
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
   const [generateMsg, setGenerateMsg] = useState<string | null>(null);
+  const [language, setLanguage] = useState<"ko" | "en">(() => {
+    if (typeof window !== "undefined") {
+      return (localStorage.getItem("briefing_lang") as "ko" | "en") ?? "ko";
+    }
+    return "ko";
+  });
+  const [translating, setTranslating] = useState(false);
 
   useEffect(() => {
     fetchFeed(date);
@@ -40,6 +50,41 @@ export default function FeedPage() {
     const data = await res.json();
     setSummaries(data.summaries ?? []);
     setLoading(false);
+  }
+
+  async function ensureTranslations(items: SummaryItem[]) {
+    const needTranslation = items.filter((s) => !s.content_en).map((s) => s.id);
+    if (needTranslation.length === 0) return;
+
+    setTranslating(true);
+    try {
+      const res = await fetch("/api/summaries/translate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ summaryIds: needTranslation }),
+      });
+      const data = await res.json();
+      if (data.translations) {
+        setSummaries((prev) =>
+          prev.map((s) =>
+            data.translations[s.id]
+              ? { ...s, title_en: data.translations[s.id].title_en, content_en: data.translations[s.id].content_en }
+              : s
+          )
+        );
+      }
+    } finally {
+      setTranslating(false);
+    }
+  }
+
+  async function handleLanguageToggle(checked: boolean) {
+    const lang = checked ? "en" : "ko";
+    setLanguage(lang);
+    localStorage.setItem("briefing_lang", lang);
+    if (lang === "en" && summaries.length > 0) {
+      await ensureTranslations(summaries);
+    }
   }
 
   async function handleGenerate() {
@@ -127,7 +172,24 @@ export default function FeedPage() {
             )}
           </Button>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
+          {/* KO/EN 언어 스위치 */}
+          <div className="flex items-center gap-1.5">
+            <span className={`text-xs font-semibold transition-colors ${language === "ko" ? "text-foreground" : "text-muted-foreground"}`}>
+              KO
+            </span>
+            <Switch
+              checked={language === "en"}
+              onCheckedChange={handleLanguageToggle}
+              disabled={translating}
+              aria-label="언어 선택"
+            />
+            <span className={`text-xs font-semibold transition-colors ${language === "en" ? "text-foreground" : "text-muted-foreground"}`}>
+              {translating ? <Loader2 className="h-3 w-3 animate-spin inline" /> : "EN"}
+            </span>
+          </div>
+
+          {/* 날짜 네비게이션 */}
           <Button variant="outline" size="icon" onClick={() => changeDate(-1)}>
             <ChevronLeft className="h-4 w-4" />
           </Button>
@@ -171,6 +233,9 @@ export default function FeedPage() {
               id={s.id}
               title={s.title}
               content={s.content}
+              titleEn={s.title_en}
+              contentEn={s.content_en}
+              language={language}
               category={s.category as any}
               keywords={s.keywords}
               articleCount={s.article_ids?.length ?? 0}

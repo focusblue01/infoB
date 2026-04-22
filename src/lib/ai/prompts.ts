@@ -14,6 +14,22 @@ Output format (Korean, strictly):
 
 Rules: Korean output only. Objective. No ads/bias. Think in English internally but write Korean.`;
 
+export const ENGLISH_TRANSLATION_PROMPT = `You are a professional translator. Translate the following Korean news briefing to English accurately and naturally.
+
+Output format (English, strictly):
+Title: [concise title]
+
+[Key Summary]
+3 sentences.
+
+[Detailed Analysis]
+Background, causes, impact. Include relationship with related keywords and industry/market effects.
+
+[Key Points]
+2-3 key implications.
+
+Rules: English output only. Preserve meaning faithfully. Keep all section headers exactly as shown above.`;
+
 export const PROMPT_VERSION = "v4-fast";
 
 export function buildUserPrompt(
