@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import { BriefingCard } from "@/components/feed/BriefingCard";
 import { InterestsSummary } from "@/components/feed/InterestsSummary";
 import { Button } from "@/components/ui/button";
-import { Switch } from "@/components/ui/switch";
 import { ChevronLeft, ChevronRight, Newspaper, Sparkles, Loader2 } from "lucide-react";
 import { formatDate } from "@/lib/utils";
 import { useLanguage } from "@/lib/language-context";
@@ -34,18 +33,30 @@ export default function FeedPage() {
   const [generating, setGenerating] = useState(false);
   const [generateMsg, setGenerateMsg] = useState<string | null>(null);
   const [translating, setTranslating] = useState(false);
-  const { language, setLanguage, t } = useLanguage();
+  const { language, t } = useLanguage();
 
   useEffect(() => {
     fetchFeed(date);
   }, [date]);
 
+  // 영어 전환 시 번역 자동 트리거
+  useEffect(() => {
+    if (language === "en" && summaries.length > 0) {
+      ensureTranslations(summaries);
+    }
+  }, [language]);
+
   async function fetchFeed(targetDate: string) {
     setLoading(true);
     const res = await fetch(`/api/feed?date=${targetDate}`);
     const data = await res.json();
-    setSummaries(data.summaries ?? []);
+    const items = data.summaries ?? [];
+    setSummaries(items);
     setLoading(false);
+    // 피드 로드 후 EN이면 번역 확인
+    if (language === "en" && items.length > 0) {
+      ensureTranslations(items);
+    }
   }
 
   async function ensureTranslations(items: SummaryItem[]) {
@@ -71,14 +82,6 @@ export default function FeedPage() {
       }
     } finally {
       setTranslating(false);
-    }
-  }
-
-  async function handleLanguageToggle(checked: boolean) {
-    const lang = checked ? "en" : "ko";
-    setLanguage(lang);
-    if (lang === "en" && summaries.length > 0) {
-      await ensureTranslations(summaries);
     }
   }
 
@@ -116,7 +119,6 @@ export default function FeedPage() {
   async function toggleBookmark(summaryId: string) {
     const item = summaries.find((s) => s.id === summaryId);
     if (!item) return;
-
     if (item.is_bookmarked) {
       await fetch(`/api/bookmarks?summary_id=${summaryId}`, { method: "DELETE" });
     } else {
@@ -127,9 +129,7 @@ export default function FeedPage() {
       });
     }
     setSummaries((prev) =>
-      prev.map((s) =>
-        s.id === summaryId ? { ...s, is_bookmarked: !s.is_bookmarked } : s
-      )
+      prev.map((s) => s.id === summaryId ? { ...s, is_bookmarked: !s.is_bookmarked } : s)
     );
   }
 
@@ -143,43 +143,19 @@ export default function FeedPage() {
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div className="flex items-center gap-3">
           <h1 className="text-2xl font-bold">{t.todayBriefing}</h1>
-          <Button
-            onClick={handleGenerate}
-            disabled={generating}
-            size="sm"
-            className="gap-1"
-          >
+          <Button onClick={handleGenerate} disabled={generating} size="sm" className="gap-1">
             {generating ? (
-              <>
-                <Loader2 className="h-4 w-4 animate-spin" />
-                {t.generating}
-              </>
+              <><Loader2 className="h-4 w-4 animate-spin" />{t.generating}</>
             ) : (
-              <>
-                <Sparkles className="h-4 w-4" />
-                {t.generateNow}
-              </>
+              <><Sparkles className="h-4 w-4" />{t.generateNow}</>
             )}
           </Button>
+          {translating && (
+            <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+          )}
         </div>
-        <div className="flex items-center gap-3">
-          {/* KO/EN 언어 스위치 */}
-          <div className="flex items-center gap-1.5">
-            <span className={`text-xs font-semibold transition-colors ${language === "ko" ? "text-foreground" : "text-muted-foreground"}`}>
-              KO
-            </span>
-            <Switch
-              checked={language === "en"}
-              onCheckedChange={handleLanguageToggle}
-              disabled={translating}
-              aria-label={t.langLabel}
-            />
-            <span className={`text-xs font-semibold transition-colors ${language === "en" ? "text-foreground" : "text-muted-foreground"}`}>
-              {translating ? <Loader2 className="h-3 w-3 animate-spin inline" /> : "EN"}
-            </span>
-          </div>
-
-          {/* 날짜 네비게이션 */}
+        {/* 날짜 네비게이션 */}
+        <div className="flex items-center gap-2">
           <Button variant="outline" size="icon" onClick={() => changeDate(-1)}>
             <ChevronLeft className="h-4 w-4" />
           </Button>
