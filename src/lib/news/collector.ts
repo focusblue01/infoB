@@ -1,7 +1,7 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { fetchByKeywords, fetchByCategory } from "./newsapi";
 import { fetchRssFeed } from "./rss";
-import { DEFAULT_RSS_SOURCES } from "./defaultSources";
+import { DEFAULT_RSS_SOURCES, type DefaultRssSource } from "./defaultSources";
 import type { RawArticle } from "./types";
 import type { NewsCategory } from "@/types";
 
@@ -68,9 +68,9 @@ export async function collectNews(): Promise<{ collected: number; skipped: numbe
     .eq("is_active", true);
 
   const userUrls = new Set((userSources ?? []).map((s: any) => s.url));
-  const rssSources = [
+  const rssSources: DefaultRssSource[] = [
     ...DEFAULT_RSS_SOURCES.filter((s) => !userUrls.has(s.url)),
-    ...(userSources ?? []),
+    ...(userSources ?? []).map((s: any) => ({ name: s.name, url: s.url })),
   ];
 
   const allArticles: RawArticle[] = [];
