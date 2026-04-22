@@ -3,12 +3,13 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { CategoryBadge } from "@/components/feed/CategoryBadge";
 import { BookmarkButton } from "@/components/summary/BookmarkButton";
 import { FeedbackButtons } from "@/components/summary/FeedbackButtons";
 import { Separator } from "@/components/ui/separator";
-import { ArrowLeft, ExternalLink, Calendar } from "lucide-react";
+import { ArrowLeft, ExternalLink, Calendar, Loader2 } from "lucide-react";
 import { formatDate } from "@/lib/utils";
 
 export default function SummaryDetailPage() {
@@ -16,13 +17,56 @@ export default function SummaryDetailPage() {
   const router = useRouter();
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [language, setLanguage] = useState<"ko" | "en">("ko");
+  const [translating, setTranslating] = useState(false);
 
   useEffect(() => {
+    const savedLang = (localStorage.getItem("briefing_lang") as "ko" | "en") ?? "ko";
+    setLanguage(savedLang);
+
     fetch(`/api/summaries/${params.id}`)
       .then((r) => r.json())
-      .then(setData)
+      .then((d) => {
+        setData(d);
+        if (savedLang === "en" && d.summary && !d.summary.content_en) {
+          translateSummary(d.summary.id);
+        }
+      })
       .finally(() => setLoading(false));
   }, [params.id]);
+
+  async function translateSummary(id: string) {
+    setTranslating(true);
+    try {
+      const res = await fetch("/api/summaries/translate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ summaryIds: [id] }),
+      });
+      const result = await res.json();
+      if (result.translations?.[id]) {
+        setData((prev: any) => ({
+          ...prev,
+          summary: {
+            ...prev.summary,
+            title_en: result.translations[id].title_en,
+            content_en: result.translations[id].content_en,
+          },
+        }));
+      }
+    } finally {
+      setTranslating(false);
+    }
+  }
+
+  async function handleLanguageToggle(checked: boolean) {
+    const lang = checked ? "en" : "ko";
+    setLanguage(lang);
+    localStorage.setItem("briefing_lang", lang);
+    if (lang === "en" && data?.summary && !data.summary.content_en) {
+      await translateSummary(data.summary.id);
+    }
+  }
 
   async function toggleBookmark() {
     if (!data) return;
@@ -57,11 +101,31 @@ export default function SummaryDetailPage() {
 
   const { summary, articles } = data;
 
+  const displayTitle = language === "en" && summary.title_en ? summary.title_en : summary.title;
+  const displayContent = language === "en" && summary.content_en ? summary.content_en : summary.content;
+
   return (
     <div className="space-y-6 max-w-3xl mx-auto">
-      <Button variant="ghost" onClick={() => router.back()} className="gap-1">
-        <ArrowLeft className="h-4 w-4" /> 피드로 돌아가기
-      </Button>
+      <div className="flex items-center justify-between">
+        <Button variant="ghost" onClick={() => router.back()} className="gap-1">
+          <ArrowLeft className="h-4 w-4" /> 피드로 돌아가기
+        </Button>
+        {/* KO/EN 언어 스위치 */}
+        <div className="flex items-center gap-1.5">
+          <span className={`text-xs font-semibold transition-colors ${language === "ko" ? "text-foreground" : "text-muted-foreground"}`}>
+            KO
+          </span>
+          <Switch
+            checked={language === "en"}
+            onCheckedChange={handleLanguageToggle}
+            disabled={translating}
+            aria-label="언어 선택"
+          />
+          <span className={`text-xs font-semibold transition-colors ${language === "en" ? "text-foreground" : "text-muted-foreground"}`}>
+            {translating ? <Loader2 className="h-3 w-3 animate-spin inline" /> : "EN"}
+          </span>
+        </div>
+      </div>
 
       <Card>
         <CardHeader className="space-y-4">
@@ -75,7 +139,7 @@ export default function SummaryDetailPage() {
                   </span>
                 ))}
               </div>
-              <h1 className="text-2xl font-bold leading-tight">{summary.title}</h1>
+              <h1 className="text-2xl font-bold leading-tight">{displayTitle}</h1>
               <div className="flex items-center gap-1 text-sm text-muted-foreground">
                 <Calendar className="h-4 w-4" />
                 {formatDate(summary.briefing_date)}
@@ -87,7 +151,7 @@ export default function SummaryDetailPage() {
         <CardContent className="space-y-6">
           {/* 요약 본문 */}
           <div className="prose prose-neutral dark:prose-invert max-w-none">
-            {summary.content.split("\n").map((line: string, i: number) => {
+            {displayContent.split("\n").map((line: string, i: number) => {
               if (line.startsWith("[") && line.includes("]")) {
                 const bracket = line.indexOf("]");
                 const heading = line.slice(1, bracket);
@@ -108,7 +172,9 @@ export default function SummaryDetailPage() {
 
           {/* 피드백 */}
           <div className="flex items-center justify-between">
-            <span className="text-sm text-muted-foreground">이 요약이 도움이 되었나요?</span>
+            <span className="text-sm text-muted-foreground">
+              {language === "en" ? "Was this summary helpful?" : "이 요약이 도움이 되었나요?"}
+            </span>
             <FeedbackButtons feedback={data.user_feedback} onFeedback={handleFeedback} />
           </div>
 
@@ -117,7 +183,9 @@ export default function SummaryDetailPage() {
           {/* 원문 기사 */}
           {articles?.length > 0 && (
             <div className="space-y-3">
-              <h3 className="font-semibold">원문 기사 ({articles.length}건)</h3>
+              <h3 className="font-semibold">
+                {language === "en" ? `Source Articles (${articles.length})` : `원문 기사 (${articles.length}건)`}
+              </h3>
               <div className="space-y-2">
                 {articles.map((a: any) => (
                   <a
