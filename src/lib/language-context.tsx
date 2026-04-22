@@ -92,7 +92,7 @@ const T = {
       global: "Global",
     } as Record<NewsCategory, string>,
   },
-} as const;
+};
 
 type Translations = typeof T.ko;
 
