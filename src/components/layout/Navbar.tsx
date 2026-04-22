@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
 import { ThemeToggle } from "@/components/common/ThemeToggle";
 import { Newspaper, Bookmark, Settings, LogOut, Menu, X, Flame } from "lucide-react";
 import { useState } from "react";
@@ -18,7 +19,7 @@ export function Navbar({ userName, streakCount = 0 }: NavbarProps) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const router = useRouter();
   const supabase = createClient();
-  const { t } = useLanguage();
+  const { language, setLanguage, t } = useLanguage();
 
   async function handleLogout() {
     await supabase.auth.signOut();
@@ -62,6 +63,20 @@ export function Navbar({ userName, streakCount = 0 }: NavbarProps) {
           {userName && (
             <span className="hidden sm:block text-sm text-muted-foreground">{userName}</span>
           )}
+          {/* KO/EN 언어 스위치 */}
+          <div className="flex items-center gap-1.5">
+            <span className={`text-xs font-semibold transition-colors ${language === "ko" ? "text-foreground" : "text-muted-foreground"}`}>
+              KO
+            </span>
+            <Switch
+              checked={language === "en"}
+              onCheckedChange={(checked) => setLanguage(checked ? "en" : "ko")}
+              aria-label={t.langLabel}
+            />
+            <span className={`text-xs font-semibold transition-colors ${language === "en" ? "text-foreground" : "text-muted-foreground"}`}>
+              EN
+            </span>
+          </div>
           <ThemeToggle />
           <Button variant="ghost" size="icon" onClick={handleLogout} className="hidden md:flex">
             <LogOut className="h-4 w-4" />

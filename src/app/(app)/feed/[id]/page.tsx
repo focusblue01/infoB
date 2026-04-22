@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { Switch } from "@/components/ui/switch";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { CategoryBadge } from "@/components/feed/CategoryBadge";
 import { BookmarkButton } from "@/components/summary/BookmarkButton";
@@ -19,7 +18,7 @@ export default function SummaryDetailPage() {
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [translating, setTranslating] = useState(false);
-  const { language, setLanguage, t } = useLanguage();
+  const { language, t } = useLanguage();
 
   useEffect(() => {
     fetch(`/api/summaries/${params.id}`)
@@ -32,6 +31,13 @@ export default function SummaryDetailPage() {
       })
       .finally(() => setLoading(false));
   }, [params.id]);
+
+  // 언어 전환 시 번역 자동 트리거
+  useEffect(() => {
+    if (language === "en" && data?.summary && !data.summary.content_en) {
+      translateSummary(data.summary.id);
+    }
+  }, [language]);
 
   async function translateSummary(id: string) {
     setTranslating(true);
@@ -54,14 +60,6 @@ export default function SummaryDetailPage() {
       }
     } finally {
       setTranslating(false);
-    }
-  }
-
-  async function handleLanguageToggle(checked: boolean) {
-    const lang = checked ? "en" : "ko";
-    setLanguage(lang);
-    if (lang === "en" && data?.summary && !data.summary.content_en) {
-      await translateSummary(data.summary.id);
     }
   }
 
@@ -89,7 +87,12 @@ export default function SummaryDetailPage() {
   }
 
   if (loading) {
-    return <div className="space-y-4"><div className="h-8 w-48 bg-muted animate-pulse rounded" /><div className="h-64 bg-muted animate-pulse rounded-lg" /></div>;
+    return (
+      <div className="space-y-4">
+        <div className="h-8 w-48 bg-muted animate-pulse rounded" />
+        <div className="h-64 bg-muted animate-pulse rounded-lg" />
+      </div>
+    );
   }
 
   if (!data?.summary) {
@@ -97,7 +100,6 @@ export default function SummaryDetailPage() {
   }
 
   const { summary, articles } = data;
-
   const displayTitle = language === "en" && summary.title_en ? summary.title_en : summary.title;
   const displayContent = language === "en" && summary.content_en ? summary.content_en : summary.content;
 
@@ -107,21 +109,12 @@ export default function SummaryDetailPage() {
         <Button variant="ghost" onClick={() => router.back()} className="gap-1">
           <ArrowLeft className="h-4 w-4" /> {t.backToFeed}
         </Button>
-        {/* KO/EN 언어 스위치 */}
-        <div className="flex items-center gap-1.5">
-          <span className={`text-xs font-semibold transition-colors ${language === "ko" ? "text-foreground" : "text-muted-foreground"}`}>
-            KO
-          </span>
-          <Switch
-            checked={language === "en"}
-            onCheckedChange={handleLanguageToggle}
-            disabled={translating}
-            aria-label={t.langLabel}
-          />
-          <span className={`text-xs font-semibold transition-colors ${language === "en" ? "text-foreground" : "text-muted-foreground"}`}>
-            {translating ? <Loader2 className="h-3 w-3 animate-spin inline" /> : "EN"}
-          </span>
-        </div>
+        {translating && (
+          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+            <Loader2 className="h-3 w-3 animate-spin" />
+            {language === "en" ? "Translating..." : "번역 중..."}
+          </div>
+        )}
       </div>
 
       <Card>
