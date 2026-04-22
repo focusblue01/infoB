@@ -70,7 +70,7 @@ export default function LoginPage() {
           <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-lg bg-primary">
             <Newspaper className="h-6 w-6 text-primary-foreground" />
           </div>
-          <CardTitle className="text-2xl">Daily News Digest</CardTitle>
+          <CardTitle className="text-2xl">InfoB</CardTitle>
           <CardDescription>계정에 로그인하세요</CardDescription>
         </CardHeader>
         <CardContent>

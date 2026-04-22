@@ -17,7 +17,7 @@ function LandingContent() {
         <div className="mx-auto max-w-5xl flex h-14 items-center justify-between px-4">
           <div className="flex items-center gap-2 font-bold text-lg">
             <Newspaper className="h-5 w-5 text-primary" />
-            Daily News Digest
+            InfoB
           </div>
           <div className="flex items-center gap-2">
             {/* KO/EN 토글 */}

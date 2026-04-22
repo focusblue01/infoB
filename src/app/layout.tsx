@@ -3,7 +3,7 @@ import { ThemeProvider } from "next-themes";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Daily News Digest",
+  title: "InfoB",
   description: "관심사 기반 AI 뉴스 분석·요약 서비스",
 };
 

@@ -87,7 +87,7 @@ const T = {
     feature2Desc: "매일 새벽 AI가 관련 뉴스를 수집하고 배경·원인·시사점을 포함한 1,500자 분석 요약을 생성합니다.",
     feature3Title: "3. 아침 브리핑",
     feature3Desc: "웹 피드와 이메일로 오늘의 브리핑을 받아보세요. 5분이면 핵심 이슈를 파악합니다.",
-    footerText: "Daily News Digest © 2026. AI 기반 뉴스 큐레이션 서비스.",
+    footerText: "InfoB © 2026. AI 기반 뉴스 큐레이션 서비스.",
 
     // Logged-in home
     welcomeBack: (name: string) => `안녕하세요, ${name || "사용자"}님!`,
@@ -199,7 +199,7 @@ const T = {
     feature2Desc: "AI collects related news daily and generates 1,500-character summaries including background, causes, and key insights.",
     feature3Title: "3. Morning Briefing",
     feature3Desc: "Receive your daily briefing via web feed and email. Grasp today's key issues in just 5 minutes.",
-    footerText: "Daily News Digest © 2026. AI-powered news curation service.",
+    footerText: "InfoB © 2026. AI-powered news curation service.",
 
     // Logged-in home
     welcomeBack: (name: string) => `Welcome back, ${name || "there"}!`,

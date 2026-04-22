@@ -28,7 +28,7 @@ function buildBriefingHtml(
     <html>
     <body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;max-width:600px;margin:0 auto;padding:20px;color:#111827;">
       <div style="text-align:center;padding:20px 0;border-bottom:2px solid #2563eb;">
-        <h1 style="margin:0;font-size:24px;color:#1e3a8a;">Daily News Digest</h1>
+        <h1 style="margin:0;font-size:24px;color:#1e3a8a;">InfoB</h1>
         <p style="margin:4px 0 0;color:#6b7280;font-size:14px;">${date} 브리핑</p>
       </div>
       <div style="padding:20px 0;">
@@ -39,7 +39,7 @@ function buildBriefingHtml(
         <a href="${APP_URL}/feed" style="display:inline-block;padding:10px 24px;background:#2563eb;color:white;border-radius:6px;text-decoration:none;font-size:14px;">전체 브리핑 보기</a>
       </div>
       <div style="text-align:center;padding:16px 0;font-size:12px;color:#9ca3af;">
-        <p>이 메일은 Daily News Digest에서 발송되었습니다.</p>
+        <p>이 메일은 InfoB에서 발송되었습니다.</p>
         <a href="${APP_URL}/settings" style="color:#6b7280;">알림 설정 변경</a>
       </div>
     </body>
@@ -105,7 +105,7 @@ export async function sendDailyEmails(): Promise<{ sent: number; failed: number 
       );
 
       await resend.emails.send({
-        from: "Daily News Digest <briefing@resend.dev>",
+        from: "InfoB <briefing@resend.dev>",
         to: authUser.user.email,
         subject: `[Daily Digest] ${today} 오늘의 브리핑`,
         html,
