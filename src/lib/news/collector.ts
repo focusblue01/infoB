@@ -126,11 +126,15 @@ export async function collectNews(): Promise<{ collected: number; skipped: numbe
     }
   }
 
-  // RSS 결과 취합 + 키워드 매핑
-  for (const arts of rssResults) {
-    for (const a of arts) {
+  // RSS 결과 취합 + 카테고리 매핑 + 키워드 매핑
+  for (let i = 0; i < rssResults.length; i++) {
+    const sourceCategory = rssSources[i]?.category as NewsCategory | undefined;
+    for (const a of rssResults[i]) {
       allArticles.push(a);
-      // RSS 기사도 키워드 그룹 매핑 (category는 null로 유지)
+      // 소스에 카테고리 정의된 경우 기사 카테고리 설정 (category 없는 기사만)
+      if (sourceCategory && !articleCategoryMap.has(a.externalId)) {
+        articleCategoryMap.set(a.externalId, sourceCategory);
+      }
       const text = `${a.title} ${a.description ?? ""}`.toLowerCase();
       if (!articleKeywordMap.has(a.externalId)) {
         articleKeywordMap.set(a.externalId, new Set());

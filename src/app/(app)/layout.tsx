@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { Navbar } from "@/components/layout/Navbar";
+import { ClientWrapper } from "@/components/layout/ClientWrapper";
 import { redirect } from "next/navigation";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
@@ -20,14 +21,16 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   }
 
   return (
-    <div className="min-h-screen">
-      <Navbar
-        userName={profile?.display_name}
-        streakCount={profile?.streak_count ?? 0}
-      />
-      <main className="mx-auto max-w-5xl px-4 py-6">
-        {children}
-      </main>
-    </div>
+    <ClientWrapper>
+      <div className="min-h-screen">
+        <Navbar
+          userName={profile?.display_name}
+          streakCount={profile?.streak_count ?? 0}
+        />
+        <main className="mx-auto max-w-5xl px-4 py-6">
+          {children}
+        </main>
+      </div>
+    </ClientWrapper>
   );
 }

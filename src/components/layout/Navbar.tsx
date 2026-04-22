@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/common/ThemeToggle";
 import { Newspaper, Bookmark, Settings, LogOut, Menu, X, Flame } from "lucide-react";
 import { useState } from "react";
+import { useLanguage } from "@/lib/language-context";
 
 interface NavbarProps {
   userName?: string | null;
@@ -17,6 +18,7 @@ export function Navbar({ userName, streakCount = 0 }: NavbarProps) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const router = useRouter();
   const supabase = createClient();
+  const { t } = useLanguage();
 
   async function handleLogout() {
     await supabase.auth.signOut();
@@ -25,9 +27,9 @@ export function Navbar({ userName, streakCount = 0 }: NavbarProps) {
   }
 
   const navLinks = [
-    { href: "/feed", label: "피드", icon: Newspaper },
-    { href: "/bookmarks", label: "북마크", icon: Bookmark },
-    { href: "/settings", label: "설정", icon: Settings },
+    { href: "/feed", label: t.navFeed, icon: Newspaper },
+    { href: "/bookmarks", label: t.navBookmarks, icon: Bookmark },
+    { href: "/settings", label: t.navSettings, icon: Settings },
   ];
 
   return (
@@ -54,7 +56,7 @@ export function Navbar({ userName, streakCount = 0 }: NavbarProps) {
           {streakCount > 0 && (
             <div className="hidden sm:flex items-center gap-1 text-sm font-medium text-orange-500">
               <Flame className="h-4 w-4" />
-              {streakCount}일 연속
+              {t.streak(streakCount)}
             </div>
           )}
           {userName && (
@@ -76,7 +78,7 @@ export function Navbar({ userName, streakCount = 0 }: NavbarProps) {
           {streakCount > 0 && (
             <div className="flex items-center gap-1 text-sm font-medium text-orange-500 pb-2">
               <Flame className="h-4 w-4" />
-              {streakCount}일 연속 읽기 중
+              {t.streakMobile(streakCount)}
             </div>
           )}
           {navLinks.map((link) => (
@@ -89,7 +91,7 @@ export function Navbar({ userName, streakCount = 0 }: NavbarProps) {
           ))}
           <Button variant="ghost" className="w-full justify-start gap-2 text-destructive" onClick={handleLogout}>
             <LogOut className="h-4 w-4" />
-            로그아웃
+            {t.navLogout}
           </Button>
         </div>
       )}

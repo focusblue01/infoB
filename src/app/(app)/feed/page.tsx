@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { ChevronLeft, ChevronRight, Newspaper, Sparkles, Loader2 } from "lucide-react";
 import { formatDate } from "@/lib/utils";
+import { useLanguage } from "@/lib/language-context";
 
 interface SummaryItem {
   id: string;
@@ -32,13 +33,8 @@ export default function FeedPage() {
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
   const [generateMsg, setGenerateMsg] = useState<string | null>(null);
-  const [language, setLanguage] = useState<"ko" | "en">(() => {
-    if (typeof window !== "undefined") {
-      return (localStorage.getItem("briefing_lang") as "ko" | "en") ?? "ko";
-    }
-    return "ko";
-  });
   const [translating, setTranslating] = useState(false);
+  const { language, setLanguage, t } = useLanguage();
 
   useEffect(() => {
     fetchFeed(date);
@@ -81,7 +77,6 @@ export default function FeedPage() {
   async function handleLanguageToggle(checked: boolean) {
     const lang = checked ? "en" : "ko";
     setLanguage(lang);
-    localStorage.setItem("briefing_lang", lang);
     if (lang === "en" && summaries.length > 0) {
       await ensureTranslations(summaries);
     }
@@ -94,13 +89,10 @@ export default function FeedPage() {
       const res = await fetch("/api/briefing/generate", { method: "POST" });
       const data = await res.json();
       if (!res.ok) {
-        setGenerateMsg(`❌ ${data.error ?? "생성 실패"}`);
+        setGenerateMsg(`❌ ${data.error ?? t.generateFailed}`);
       } else {
-        setGenerateMsg(
-          `✅ 수집 ${data.collected}건 / 브리핑 ${data.summariesSucceeded}개 생성`
-        );
+        setGenerateMsg(t.generateSuccess(data.collected, data.summariesSucceeded));
         const today = getKSTDate();
-        // date가 이미 오늘이면 직접 fetchFeed, 다르면 setDate가 useEffect 트리거
         if (date === today) {
           await fetchFeed(today);
         } else {
@@ -146,13 +138,11 @@ export default function FeedPage() {
 
   return (
     <div className="space-y-6">
-      {/* 관심사 요약 */}
       <InterestsSummary />
 
-      {/* 날짜 네비게이션 + 생성 버튼 */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div className="flex items-center gap-3">
-          <h1 className="text-2xl font-bold">오늘의 브리핑</h1>
+          <h1 className="text-2xl font-bold">{t.todayBriefing}</h1>
           <Button
             onClick={handleGenerate}
             disabled={generating}
@@ -162,12 +152,12 @@ export default function FeedPage() {
             {generating ? (
               <>
                 <Loader2 className="h-4 w-4 animate-spin" />
-                생성 중...
+                {t.generating}
               </>
             ) : (
               <>
                 <Sparkles className="h-4 w-4" />
-                바로 생성
+                {t.generateNow}
               </>
             )}
           </Button>
@@ -182,7 +172,7 @@ export default function FeedPage() {
               checked={language === "en"}
               onCheckedChange={handleLanguageToggle}
               disabled={translating}
-              aria-label="언어 선택"
+              aria-label={t.langLabel}
             />
             <span className={`text-xs font-semibold transition-colors ${language === "en" ? "text-foreground" : "text-muted-foreground"}`}>
               {translating ? <Loader2 className="h-3 w-3 animate-spin inline" /> : "EN"}
@@ -206,7 +196,6 @@ export default function FeedPage() {
         <div className="rounded-md bg-muted px-4 py-2 text-sm">{generateMsg}</div>
       )}
 
-      {/* 콘텐츠 */}
       {loading ? (
         <div className="space-y-4">
           {[1, 2, 3].map((i) => (
@@ -217,11 +206,9 @@ export default function FeedPage() {
         <div className="text-center py-20 space-y-4">
           <Newspaper className="h-12 w-12 mx-auto text-muted-foreground/50" />
           <div>
-            <p className="font-medium">브리핑이 없습니다</p>
+            <p className="font-medium">{t.noBriefings}</p>
             <p className="text-sm text-muted-foreground">
-              {isToday
-                ? "오늘의 브리핑이 아직 생성되지 않았습니다. 매일 오전 6시에 자동 생성됩니다."
-                : "이 날짜에는 브리핑이 없습니다."}
+              {isToday ? t.noBriefingsToday : t.noBriefingsDate}
             </p>
           </div>
         </div>
@@ -235,7 +222,6 @@ export default function FeedPage() {
               content={s.content}
               titleEn={s.title_en}
               contentEn={s.content_en}
-              language={language}
               category={s.category as any}
               keywords={s.keywords}
               articleCount={s.article_ids?.length ?? 0}

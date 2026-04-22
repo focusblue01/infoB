@@ -7,6 +7,7 @@ import { BookmarkButton } from "@/components/summary/BookmarkButton";
 import { truncate } from "@/lib/utils";
 import type { NewsCategory } from "@/types";
 import { FileText } from "lucide-react";
+import { useLanguage } from "@/lib/language-context";
 
 interface BriefingCardProps {
   id: string;
@@ -14,7 +15,6 @@ interface BriefingCardProps {
   content: string;
   titleEn?: string | null;
   contentEn?: string | null;
-  language?: "ko" | "en";
   category: NewsCategory | null;
   keywords: string[];
   articleCount: number;
@@ -23,11 +23,13 @@ interface BriefingCardProps {
 }
 
 export function BriefingCard({
-  id, title, content, titleEn, contentEn, language = "ko",
+  id, title, content, titleEn, contentEn,
   category, keywords, articleCount, isBookmarked, onBookmarkToggle,
 }: BriefingCardProps) {
+  const { language, t } = useLanguage();
   const displayTitle = language === "en" && titleEn ? titleEn : title;
   const displayContent = language === "en" && contentEn ? contentEn : content;
+
   return (
     <Card className="group hover:shadow-md transition-shadow">
       <CardHeader className="pb-3">
@@ -58,7 +60,7 @@ export function BriefingCard({
         </Link>
         <div className="flex items-center gap-1 mt-3 text-xs text-muted-foreground">
           <FileText className="h-3 w-3" />
-          <span>기사 {articleCount}건 분석</span>
+          <span>{t.articlesAnalyzed(articleCount)}</span>
         </div>
       </CardContent>
     </Card>

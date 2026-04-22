@@ -11,24 +11,22 @@ import { FeedbackButtons } from "@/components/summary/FeedbackButtons";
 import { Separator } from "@/components/ui/separator";
 import { ArrowLeft, ExternalLink, Calendar, Loader2 } from "lucide-react";
 import { formatDate } from "@/lib/utils";
+import { useLanguage } from "@/lib/language-context";
 
 export default function SummaryDetailPage() {
   const params = useParams();
   const router = useRouter();
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [language, setLanguage] = useState<"ko" | "en">("ko");
   const [translating, setTranslating] = useState(false);
+  const { language, setLanguage, t } = useLanguage();
 
   useEffect(() => {
-    const savedLang = (localStorage.getItem("briefing_lang") as "ko" | "en") ?? "ko";
-    setLanguage(savedLang);
-
     fetch(`/api/summaries/${params.id}`)
       .then((r) => r.json())
       .then((d) => {
         setData(d);
-        if (savedLang === "en" && d.summary && !d.summary.content_en) {
+        if (language === "en" && d.summary && !d.summary.content_en) {
           translateSummary(d.summary.id);
         }
       })
@@ -62,7 +60,6 @@ export default function SummaryDetailPage() {
   async function handleLanguageToggle(checked: boolean) {
     const lang = checked ? "en" : "ko";
     setLanguage(lang);
-    localStorage.setItem("briefing_lang", lang);
     if (lang === "en" && data?.summary && !data.summary.content_en) {
       await translateSummary(data.summary.id);
     }
@@ -96,7 +93,7 @@ export default function SummaryDetailPage() {
   }
 
   if (!data?.summary) {
-    return <div className="text-center py-20 text-muted-foreground">요약을 찾을 수 없습니다.</div>;
+    return <div className="text-center py-20 text-muted-foreground">{t.summaryNotFound}</div>;
   }
 
   const { summary, articles } = data;
@@ -108,7 +105,7 @@ export default function SummaryDetailPage() {
     <div className="space-y-6 max-w-3xl mx-auto">
       <div className="flex items-center justify-between">
         <Button variant="ghost" onClick={() => router.back()} className="gap-1">
-          <ArrowLeft className="h-4 w-4" /> 피드로 돌아가기
+          <ArrowLeft className="h-4 w-4" /> {t.backToFeed}
         </Button>
         {/* KO/EN 언어 스위치 */}
         <div className="flex items-center gap-1.5">
@@ -119,7 +116,7 @@ export default function SummaryDetailPage() {
             checked={language === "en"}
             onCheckedChange={handleLanguageToggle}
             disabled={translating}
-            aria-label="언어 선택"
+            aria-label={t.langLabel}
           />
           <span className={`text-xs font-semibold transition-colors ${language === "en" ? "text-foreground" : "text-muted-foreground"}`}>
             {translating ? <Loader2 className="h-3 w-3 animate-spin inline" /> : "EN"}
@@ -149,7 +146,6 @@ export default function SummaryDetailPage() {
           </div>
         </CardHeader>
         <CardContent className="space-y-6">
-          {/* 요약 본문 */}
           <div className="prose prose-neutral dark:prose-invert max-w-none">
             {displayContent.split("\n").map((line: string, i: number) => {
               if (line.startsWith("[") && line.includes("]")) {
@@ -170,22 +166,16 @@ export default function SummaryDetailPage() {
 
           <Separator />
 
-          {/* 피드백 */}
           <div className="flex items-center justify-between">
-            <span className="text-sm text-muted-foreground">
-              {language === "en" ? "Was this summary helpful?" : "이 요약이 도움이 되었나요?"}
-            </span>
+            <span className="text-sm text-muted-foreground">{t.feedbackPrompt}</span>
             <FeedbackButtons feedback={data.user_feedback} onFeedback={handleFeedback} />
           </div>
 
           <Separator />
 
-          {/* 원문 기사 */}
           {articles?.length > 0 && (
             <div className="space-y-3">
-              <h3 className="font-semibold">
-                {language === "en" ? `Source Articles (${articles.length})` : `원문 기사 (${articles.length}건)`}
-              </h3>
+              <h3 className="font-semibold">{t.sourceArticles(articles.length)}</h3>
               <div className="space-y-2">
                 {articles.map((a: any) => (
                   <a
