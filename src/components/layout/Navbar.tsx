@@ -39,6 +39,7 @@ export function Navbar({ userName, streakCount = 0 }: NavbarProps) {
         <div className="flex items-center gap-6">
           <Link href="/" className="flex items-center gap-2 font-bold text-lg">
             <Newspaper className="h-5 w-5 text-primary" />
+            <span className="sm:hidden">infoB</span>
             <span className="hidden sm:inline">Daily News Digest</span>
           </Link>
           <div className="hidden md:flex items-center gap-1">
