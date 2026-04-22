@@ -1,6 +1,6 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getAnthropicClient, getGeminiClient, getProvider } from "./client";
-import { SYSTEM_PROMPT, PROMPT_VERSION, buildUserPrompt } from "./prompts";
+import { SYSTEM_PROMPT, ENGLISH_TRANSLATION_PROMPT, PROMPT_VERSION, buildUserPrompt } from "./prompts";
 import { CATEGORY_LABELS, type NewsCategory } from "@/types";
 import { getKSTDateString } from "@/lib/date";
 
@@ -203,10 +203,27 @@ export async function generateSummaries(): Promise<SummaryResult[]> {
 
       const { title, content } = parseSummaryResponse(rawResponse);
 
+      // 한국어 생성과 동시에 영어 번역 생성
+      let titleEn: string | null = null;
+      let contentEn: string | null = null;
+      try {
+        const { content: rawEn } = await callAIWithRetry(
+          ENGLISH_TRANSLATION_PROMPT,
+          `${title || topic}\n\n${content}`
+        );
+        const parsed = parseSummaryResponse(rawEn);
+        titleEn = parsed.title || null;
+        contentEn = parsed.content || null;
+      } catch (e: any) {
+        console.error(`English translation failed for ${topic}:`, e.message);
+      }
+
       await supabase.from("summaries").insert({
         interest_group_id: group.id,
         title: title || `${topic} 브리핑`,
         content,
+        title_en: titleEn,
+        content_en: contentEn,
         category: group.group_type === "category" ? group.group_key : null,
         keywords: group.group_type === "keyword" ? [group.group_key, ...(group.similar_keywords ?? [])] : [],
         article_ids: matched.map((a: any) => a.id),
