@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Plus, X } from "lucide-react";
+import { useLanguage } from "@/lib/language-context";
 
 interface RssSource {
   name: string;
@@ -19,6 +20,7 @@ interface RssSourceInputProps {
 export function RssSourceInput({ sources, onChange }: RssSourceInputProps) {
   const [name, setName] = useState("");
   const [url, setUrl] = useState("");
+  const { t } = useLanguage();
 
   function add() {
     if (!name.trim() || !url.trim()) return;
@@ -34,16 +36,16 @@ export function RssSourceInput({ sources, onChange }: RssSourceInputProps) {
 
   return (
     <div className="space-y-3">
-      <label className="text-sm font-medium">RSS 소스 (선택)</label>
+      <label className="text-sm font-medium">{t.rssSourcesLabel}</label>
       <div className="flex gap-2">
         <Input
-          placeholder="소스 이름"
+          placeholder={t.sourceNamePlaceholder}
           value={name}
           onChange={(e) => setName(e.target.value)}
           className="w-1/3"
         />
         <Input
-          placeholder="RSS URL"
+          placeholder={t.rssUrlPlaceholder}
           value={url}
           onChange={(e) => setUrl(e.target.value)}
           className="flex-1"
