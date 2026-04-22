@@ -101,7 +101,7 @@ export default function SignupPage() {
             <Newspaper className="h-6 w-6 text-primary-foreground" />
           </div>
           <CardTitle className="text-2xl">회원가입</CardTitle>
-          <CardDescription>Daily News Digest를 시작하세요</CardDescription>
+          <CardDescription>InfoB를 시작하세요</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSignup} className="space-y-4">
