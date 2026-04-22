@@ -164,7 +164,7 @@ export async function generateSummaries(): Promise<SummaryResult[]> {
           .gte("collected_at", yesterday)
           .order("is_major", { ascending: false })
           .order("published_at", { ascending: false })
-          .limit(12);
+          .limit(30);
       } else {
         articlesQuery = supabase
           .from("articles")
@@ -173,10 +173,25 @@ export async function generateSummaries(): Promise<SummaryResult[]> {
           .gte("collected_at", yesterday)
           .order("is_major", { ascending: false })
           .order("published_at", { ascending: false })
-          .limit(12);
+          .limit(30);
       }
 
-      const { data: matched } = await articlesQuery;
+      const { data: fetched } = await articlesQuery;
+
+      // 연합뉴스/연합인포맥스/연합뉴스TV 우선 정렬 후 상위 12개 선택
+      const PRIORITY_SOURCES = ["연합인포맥스", "연합뉴스TV", "연합뉴스"];
+      const getPriority = (sourceName: string) => {
+        const idx = PRIORITY_SOURCES.findIndex((p) => sourceName.startsWith(p));
+        return idx === -1 ? PRIORITY_SOURCES.length : idx;
+      };
+      const matched = fetched
+        ? [...fetched].sort((a, b) => {
+            const pa = getPriority(a.source_name ?? "");
+            const pb = getPriority(b.source_name ?? "");
+            if (pa !== pb) return pa - pb;
+            return (b.is_major ? 1 : 0) - (a.is_major ? 1 : 0);
+          }).slice(0, 12)
+        : null;
 
       if (!matched || matched.length < 3) {
         return { groupId: group.id, topic: group.group_key, success: true };
