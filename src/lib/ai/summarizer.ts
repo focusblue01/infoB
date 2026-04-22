@@ -141,7 +141,7 @@ export async function generateSummaries(): Promise<SummaryResult[]> {
       .gte("collected_at", yesterday)
       .order("is_major", { ascending: false })
       .order("published_at", { ascending: false })
-      .limit(500),
+      .limit(2000),
   ]);
 
   const groups = groupsRes.data ?? [];
