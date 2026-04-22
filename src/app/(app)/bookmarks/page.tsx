@@ -7,10 +7,12 @@ import { CategoryBadge } from "@/components/feed/CategoryBadge";
 import { Button } from "@/components/ui/button";
 import { Bookmark, Trash2 } from "lucide-react";
 import { formatDate, truncate } from "@/lib/utils";
+import { useLanguage } from "@/lib/language-context";
 
 export default function BookmarksPage() {
   const [bookmarks, setBookmarks] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const { t } = useLanguage();
 
   useEffect(() => {
     fetch("/api/bookmarks")
@@ -26,14 +28,14 @@ export default function BookmarksPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold">북마크</h1>
+      <h1 className="text-2xl font-bold">{t.bookmarks}</h1>
 
       {loading ? (
         <div className="space-y-4">{[1, 2].map((i) => <div key={i} className="h-32 bg-muted animate-pulse rounded-lg" />)}</div>
       ) : bookmarks.length === 0 ? (
         <div className="text-center py-20 space-y-4">
           <Bookmark className="h-12 w-12 mx-auto text-muted-foreground/50" />
-          <p className="text-muted-foreground">저장한 브리핑이 없습니다</p>
+          <p className="text-muted-foreground">{t.noBookmarks}</p>
         </div>
       ) : (
         <div className="space-y-3">
