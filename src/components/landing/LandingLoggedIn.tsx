@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
-import { Newspaper, Bookmark, Settings, Flame, LogOut, Sparkles, ArrowRight } from "lucide-react";
+import { Newspaper, Bookmark, Settings, Flame, LogOut, Sparkles, ArrowRight, ShieldCheck } from "lucide-react";
 import { ThemeToggle } from "@/components/common/ThemeToggle";
 import { LanguageProvider, useLanguage } from "@/lib/language-context";
 import { createClient } from "@/lib/supabase/client";
@@ -13,9 +13,10 @@ import { createClient } from "@/lib/supabase/client";
 interface Props {
   displayName: string | null;
   streakCount: number;
+  isAdmin?: boolean;
 }
 
-function DashboardContent({ displayName, streakCount }: Props) {
+function DashboardContent({ displayName, streakCount, isAdmin = false }: Props) {
   const { language, setLanguage, t } = useLanguage();
   const router = useRouter();
   const supabase = createClient();
@@ -60,6 +61,14 @@ function DashboardContent({ displayName, streakCount }: Props) {
             <span>InfoB</span>
           </div>
           <div className="flex items-center gap-2">
+            {isAdmin && (
+              <Link href="/admin">
+                <Button variant="ghost" size="sm" className="gap-1.5 text-xs">
+                  <ShieldCheck className="h-4 w-4" />
+                  Admin
+                </Button>
+              </Link>
+            )}
             {/* KO/EN 토글 */}
             <div className="flex items-center gap-1.5">
               <span className={`text-xs font-semibold transition-colors ${language === "ko" ? "text-foreground" : "text-muted-foreground"}`}>KO</span>
@@ -136,10 +145,10 @@ function DashboardContent({ displayName, streakCount }: Props) {
   );
 }
 
-export function LandingLoggedIn({ displayName, streakCount }: Props) {
+export function LandingLoggedIn({ displayName, streakCount, isAdmin }: Props) {
   return (
     <LanguageProvider>
-      <DashboardContent displayName={displayName} streakCount={streakCount} />
+      <DashboardContent displayName={displayName} streakCount={streakCount} isAdmin={isAdmin} />
     </LanguageProvider>
   );
 }

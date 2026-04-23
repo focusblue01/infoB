@@ -12,7 +12,7 @@ export default async function HomePage() {
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("display_name, streak_count")
+    .select("display_name, streak_count, role")
     .eq("id", user.id)
     .single();
 
@@ -20,6 +20,7 @@ export default async function HomePage() {
     <LandingLoggedIn
       displayName={profile?.display_name ?? null}
       streakCount={profile?.streak_count ?? 0}
+      isAdmin={profile?.role === "A"}
     />
   );
 }
