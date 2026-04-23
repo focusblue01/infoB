@@ -9,6 +9,23 @@ AI 기반 개인화 뉴스 큐레이션 웹앱. 사용자가 설정한 관심사
 - **공유 요약 아키텍처**: `interest_groups` 기반 중복 제거로 10배 비용 절감 ($150 → $16/월, 100명 기준)
 - **이메일 발송**: Resend 기반 아침 7시 브리핑
 - **웹 피드**: 날짜별 피드, 북마크, 좋아요/싫어요, 연속 읽기 스트릭
+- **플랜별 권한**: Free / Paid-Basic / Paid-Special / Admin / Tester 5개 역할과 기능 차등
+- **다국어(KO/EN)**: 전체 UI 한/영 전환, 브리핑 본문 Claude 온디맨드 번역 및 DB 캐시
+- **접근성 설정**: 설정 페이지에서 글자 크기 슬라이더(50~150%) 조절, localStorage 저장
+- **관리자 페이지**: 사용자/카테고리/RSS/키워드 관리, 유사 키워드 직접 통합
+
+## 권한/플랜
+
+| 역할 | 코드 | 카테고리 | 키워드 | RSS | 북마크 | 이메일 알림 | 날짜 네비 | 수동 생성 |
+|---|---|---|---|---|---|---|---|---|
+| Free | `N` | 최대 3 | 0 | ✕ | ✕ | ✕ | ✕ | ✕ |
+| Paid-Basic | `R` | 최대 5 | 최대 3 | ✕ | ✓ | ✕ | ✓ | 1일 1회 |
+| Paid-Special | `S` | 무제한 | 최대 5 | ✓ | ✓ | ✓ | ✓ | 무제한 |
+| Admin | `A` | 무제한 | 최대 5 | ✓ | ✓ | ✓ | ✓ | 무제한 + 관리자 페이지 |
+| Tester | `T` | 무제한 | 최대 5 | ✓ | ✓ | ✓ | ✓ | 무제한 |
+
+- 키워드는 권한과 무관하게 공백 없는 단일 단어만 허용
+- 서버(API) / 클라이언트(UI) 양쪽에서 동시 검증
 
 ## 기술 스택
 
@@ -17,10 +34,11 @@ AI 기반 개인화 뉴스 큐레이션 웹앱. 사용자가 설정한 관심사
 | Framework | Next.js 14 (App Router, TypeScript) |
 | DB / Auth | Supabase (PostgreSQL + Auth) |
 | Styling | Tailwind CSS + shadcn/ui |
-| AI | Claude API (`@anthropic-ai/sdk`, prompt caching) |
+| AI | Claude API (`@anthropic-ai/sdk`, prompt caching, 온디맨드 번역) |
 | News | NewsAPI.org + RSS (`rss-parser`) |
 | Email | Resend |
 | Cron | cron-job.org → Vercel API Routes |
+| State | React Context (Language / UserRole / FontSize), localStorage |
 | Deploy | Vercel |
 
 ## 파이프라인
@@ -72,14 +90,18 @@ src/
 │       └── cron/{collect, summarize, email}
 ├── components/
 │   ├── ui/                  # shadcn/ui
-│   ├── layout/              # Navbar
-│   ├── feed/, summary/, onboarding/
+│   ├── layout/              # Navbar, ClientWrapper
+│   ├── feed/, summary/, onboarding/, admin/, landing/
 │   └── common/              # ThemeToggle
 ├── lib/
 │   ├── supabase/            # client, server, admin
 │   ├── news/                # newsapi, rss, collector
-│   ├── ai/                  # client, prompts, summarizer
-│   └── email/               # client, sender
+│   ├── ai/                  # client, prompts, summarizer, translator
+│   ├── email/               # client, sender
+│   ├── permissions.ts       # 역할별 기능 게이팅
+│   ├── language-context.tsx # KO/EN 번역 사전 + Provider
+│   ├── user-context.tsx     # UserRole Provider
+│   └── font-size-context.tsx# 글자 크기(50~150%) Provider
 └── types/
 ```
 
@@ -90,6 +112,9 @@ src/
 - **Title Similarity Clustering**: Jaccard 유사도 > 0.4, 3개 이상 기사가 같은 이슈를 다루면 `is_major` 플래그
 - **Prompt Caching**: Claude API의 prompt caching으로 system prompt 비용 절감
 - **External Cron**: Vercel Hobby 플랜의 크론 제약을 피해 cron-job.org로 Korean timezone 스케줄링
+- **On-demand 번역**: 한국어 원문만 Claude로 생성·저장하고, EN 전환 시 번역 결과를 `title_en`/`content_en` 컬럼에 캐시해 재요청을 방지
+- **Server + Client 권한 이중 검증**: `permissions.ts` 규칙을 UI와 API 양쪽에서 공유, N은 생성 차단, R은 하루 1회(`last_generated_date`) 제한
+- **글자 크기 적용 범위**: FontSizeProvider 를 루트 레이아웃에 두어 랜딩까지 반영, 모바일 상단 네비는 `.nav-scale-lock` 으로 고정 px 로 override 해 UX 안정성 유지
 
 ## 문서
 
