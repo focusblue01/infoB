@@ -152,12 +152,12 @@ export default function SummaryDetailPage() {
                 return (
                   <div key={i} className="mt-4 first:mt-0">
                     <h3 className="text-base font-bold text-primary mb-1">{heading}</h3>
-                    {rest && <p className="text-[15px] leading-relaxed">{rest}</p>}
+                    {rest && <p className="text-[0.9375rem] leading-relaxed">{rest}</p>}
                   </div>
                 );
               }
               if (!line.trim()) return <br key={i} />;
-              return <p key={i} className="text-[15px] leading-relaxed">{line}</p>;
+              return <p key={i} className="text-[0.9375rem] leading-relaxed">{line}</p>;
             })}
           </div>
 
