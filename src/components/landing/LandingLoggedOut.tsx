@@ -14,28 +14,29 @@ function LandingContent() {
     <div className="min-h-screen">
       {/* 헤더 */}
       <header className="border-b">
-        <div className="mx-auto max-w-5xl flex h-14 items-center justify-between px-4">
-          <div className="flex items-center gap-2 font-bold text-lg">
-            <Newspaper className="h-5 w-5 text-primary" />
-            InfoB
+        <div className="mx-auto max-w-5xl flex h-12 items-center justify-between px-3">
+          <div className="flex items-center gap-1.5 font-bold text-base">
+            <Newspaper className="h-4 w-4 text-primary" />
+            <span className="hidden xs:inline">InfoB</span>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1">
             {/* KO/EN 토글 */}
-            <div className="flex items-center gap-1.5">
-              <span className={`text-xs font-semibold transition-colors ${language === "ko" ? "text-foreground" : "text-muted-foreground"}`}>KO</span>
+            <div className="flex items-center gap-1">
+              <span className={`text-[10px] font-semibold transition-colors ${language === "ko" ? "text-foreground" : "text-muted-foreground"}`}>KO</span>
               <Switch
                 checked={language === "en"}
                 onCheckedChange={(checked) => setLanguage(checked ? "en" : "ko")}
                 aria-label={t.langLabel}
+                className="scale-75"
               />
-              <span className={`text-xs font-semibold transition-colors ${language === "en" ? "text-foreground" : "text-muted-foreground"}`}>EN</span>
+              <span className={`text-[10px] font-semibold transition-colors ${language === "en" ? "text-foreground" : "text-muted-foreground"}`}>EN</span>
             </div>
             <ThemeToggle />
             <Link href="/login">
-              <Button variant="ghost" size="sm">{t.loginBtn}</Button>
+              <Button variant="ghost" size="sm" className="h-8 px-2 text-xs">{t.loginBtn}</Button>
             </Link>
             <Link href="/signup">
-              <Button size="sm">{t.signupBtn}</Button>
+              <Button size="sm" className="h-8 px-2 text-xs">{t.signupBtn}</Button>
             </Link>
           </div>
         </div>
