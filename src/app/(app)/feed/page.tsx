@@ -7,6 +7,8 @@ import { Button } from "@/components/ui/button";
 import { ChevronLeft, ChevronRight, Newspaper, Sparkles, Loader2, AlertCircle } from "lucide-react";
 import { formatDate } from "@/lib/utils";
 import { useLanguage } from "@/lib/language-context";
+import { useUserRole } from "@/lib/user-context";
+import { canGenerate, canGenerateUnlimited, canNavigateDates, canBookmark } from "@/lib/permissions";
 
 interface SummaryItem {
   id: string;
@@ -40,6 +42,10 @@ export default function FeedPage() {
   const [generateMsg, setGenerateMsg] = useState<string | null>(null);
   const [translating, setTranslating] = useState(false);
   const { language, t } = useLanguage();
+  const role = useUserRole();
+  const showGenerate = canGenerate(role);
+  const dateNavEnabled = canNavigateDates(role);
+  const bookmarkEnabled = canBookmark(role);
 
   useEffect(() => {
     fetchFeed(date);
@@ -150,26 +156,28 @@ export default function FeedPage() {
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div className="flex items-center gap-3">
           <h1 className="text-2xl font-bold">{t.todayBriefing}</h1>
-          <Button onClick={handleGenerate} disabled={generating} size="sm" className="gap-1">
-            {generating ? (
-              <><Loader2 className="h-4 w-4 animate-spin" />{t.generating}</>
-            ) : (
-              <><Sparkles className="h-4 w-4" />{t.generateNow}</>
-            )}
-          </Button>
+          {showGenerate && (
+            <Button onClick={handleGenerate} disabled={generating} size="sm" className="gap-1">
+              {generating ? (
+                <><Loader2 className="h-4 w-4 animate-spin" />{t.generating}</>
+              ) : (
+                <><Sparkles className="h-4 w-4" />{t.generateNow}</>
+              )}
+            </Button>
+          )}
           {translating && (
             <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
           )}
         </div>
         {/* 날짜 네비게이션 */}
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="icon" onClick={() => changeDate(-1)}>
+          <Button variant="outline" size="icon" onClick={() => changeDate(-1)} disabled={!dateNavEnabled}>
             <ChevronLeft className="h-4 w-4" />
           </Button>
           <span className="text-sm font-medium min-w-[120px] text-center">
             {formatDate(date)}
           </span>
-          <Button variant="outline" size="icon" onClick={() => changeDate(1)} disabled={isToday}>
+          <Button variant="outline" size="icon" onClick={() => changeDate(1)} disabled={isToday || !dateNavEnabled}>
             <ChevronRight className="h-4 w-4" />
           </Button>
         </div>
@@ -210,6 +218,7 @@ export default function FeedPage() {
               articleCount={s.article_ids?.length ?? 0}
               isBookmarked={s.is_bookmarked}
               onBookmarkToggle={toggleBookmark}
+              showBookmark={bookmarkEnabled}
             />
           ))}
           {missingGroups.filter((g) => g.type === "keyword").length > 0 && (

@@ -19,7 +19,25 @@ export async function POST() {
 
     const admin = createAdminClient();
 
-    // 2. 사용자의 카테고리/키워드로 interest_groups 보장
+    // 2. 역할/플랜 확인
+    const { data: profile } = await admin
+      .from("profiles")
+      .select("role, last_generated_date")
+      .eq("id", user.id)
+      .single();
+
+    const role = profile?.role ?? "N";
+
+    if (role === "N") {
+      return NextResponse.json({ error: "Free plan cannot generate briefings." }, { status: 403 });
+    }
+
+    const today = getKSTDateString();
+    if (role === "R" && profile?.last_generated_date === today) {
+      return NextResponse.json({ error: "Daily limit reached. Upgrade to generate unlimited briefings." }, { status: 429 });
+    }
+
+    // 3. 사용자의 카테고리/키워드로 interest_groups 보장
     const [categoriesRes, keywordsRes] = await Promise.all([
       admin.from("user_categories").select("category").eq("user_id", user.id),
       admin.from("user_keywords").select("keyword, is_exclude").eq("user_id", user.id),
@@ -101,6 +119,11 @@ export async function POST() {
       .select("title, category, matched_keywords")
       .limit(5)
       .order("collected_at", { ascending: false });
+
+    // R 플랜: 오늘 날짜 기록
+    if (role === "R") {
+      await admin.from("profiles").update({ last_generated_date: today }).eq("id", user.id);
+    }
 
     return NextResponse.json({
       success: true,

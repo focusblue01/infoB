@@ -14,10 +14,16 @@ import { RssSourceInput } from "@/components/onboarding/RssSourceInput";
 import type { NewsCategory } from "@/types";
 import { Save, Loader2 } from "lucide-react";
 import { useLanguage } from "@/lib/language-context";
+import { useUserRole } from "@/lib/user-context";
+import { canUseEmailNotification, canUseKeywords, maxCategories } from "@/lib/permissions";
 
 export default function SettingsPage() {
   const router = useRouter();
   const { t } = useLanguage();
+  const role = useUserRole();
+  const emailNotifEnabled = canUseEmailNotification(role);
+  const keywordsEnabled = canUseKeywords(role);
+  const catLimit = maxCategories(role);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -106,14 +112,17 @@ export default function SettingsPage() {
             </div>
           </div>
           <Separator />
-          <div className="flex items-center justify-between">
+          <div className={`flex items-center justify-between ${!emailNotifEnabled ? "opacity-50" : ""}`}>
             <div>
               <Label>{t.emailNotification}</Label>
               <p className="text-sm text-muted-foreground">{t.emailNotificationDesc}</p>
+              {!emailNotifEnabled && (
+                <p className="text-xs text-muted-foreground mt-0.5">{t.upgradePlanRequired}</p>
+              )}
             </div>
-            <Switch checked={notificationEnabled} onCheckedChange={setNotificationEnabled} />
+            <Switch checked={notificationEnabled && emailNotifEnabled} onCheckedChange={emailNotifEnabled ? setNotificationEnabled : undefined} disabled={!emailNotifEnabled} />
           </div>
-          {notificationEnabled && (
+          {notificationEnabled && emailNotifEnabled && (
             <div className="space-y-2">
               <Label>{t.notificationTime}</Label>
               <Input type="time" value={notificationTime} onChange={(e) => setNotificationTime(e.target.value)} className="w-32" />
@@ -131,15 +140,23 @@ export default function SettingsPage() {
         <CardContent className="space-y-6">
           <div className="space-y-3">
             <Label>{t.categoriesLabel}</Label>
-            <CategorySelector selected={categories} onChange={setCategories} />
+            <CategorySelector selected={categories} onChange={setCategories} maxSelect={catLimit} />
           </div>
           <Separator />
-          <KeywordInput keywords={keywords} onChange={setKeywords} />
-          <KeywordInput
-            keywords={excludeKeywords}
-            onChange={setExcludeKeywords}
-            variant="exclude"
-          />
+          {keywordsEnabled ? (
+            <>
+              <KeywordInput keywords={keywords} onChange={setKeywords} />
+              <KeywordInput
+                keywords={excludeKeywords}
+                onChange={setExcludeKeywords}
+                variant="exclude"
+              />
+            </>
+          ) : (
+            <div className="rounded-md bg-muted/50 px-4 py-3 text-sm text-muted-foreground">
+              {t.upgradePlanRequired}
+            </div>
+          )}
           <Separator />
           <RssSourceInput sources={rssSources} onChange={setRssSources} />
         </CardContent>

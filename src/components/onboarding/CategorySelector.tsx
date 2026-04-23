@@ -8,25 +8,27 @@ import { useLanguage } from "@/lib/language-context";
 interface CategorySelectorProps {
   selected: NewsCategory[];
   onChange: (categories: NewsCategory[]) => void;
+  maxSelect?: number;
 }
 
-export function CategorySelector({ selected, onChange }: CategorySelectorProps) {
+export function CategorySelector({ selected, onChange, maxSelect }: CategorySelectorProps) {
   const { t } = useLanguage();
+  const limit = maxSelect ?? MAX_CATEGORIES;
 
   function toggle(cat: NewsCategory) {
     if (selected.includes(cat)) {
       onChange(selected.filter((c) => c !== cat));
-    } else if (selected.length < MAX_CATEGORIES) {
+    } else if (selected.length < limit) {
       onChange([...selected, cat]);
     }
   }
 
-  const isMaxReached = selected.length >= MAX_CATEGORIES;
+  const isMaxReached = selected.length >= limit;
 
   return (
     <div className="space-y-3">
       <div className="flex justify-end">
-        <span className="text-xs text-muted-foreground">{selected.length}/{MAX_CATEGORIES}</span>
+        <span className="text-xs text-muted-foreground">{selected.length}/{limit === 99 ? MAX_CATEGORIES : limit}</span>
       </div>
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {CATEGORIES.map((cat) => {

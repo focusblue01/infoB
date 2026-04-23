@@ -48,6 +48,7 @@ const T = {
     generateSuccess: (c: number, s: number) => `✅ 수집 ${c}건 / 브리핑 ${s}개 생성`,
     generateFailed: "생성 실패",
     noArticlesFound: "최근 관련기사를 찾을 수 없습니다.",
+    upgradePlanRequired: "유료 플랜으로 업그레이드하면 이용 가능합니다.",
 
     // Admin
     adminDashboard: "관리자 대시보드",
@@ -187,6 +188,7 @@ const T = {
     generateSuccess: (c: number, s: number) => `✅ Collected ${c} / Generated ${s} briefings`,
     generateFailed: "Generation failed",
     noArticlesFound: "No recent articles found.",
+    upgradePlanRequired: "Upgrade your plan to unlock this feature.",
 
     // Admin
     adminDashboard: "Admin Dashboard",
