@@ -16,11 +16,13 @@ import { Save, Loader2 } from "lucide-react";
 import { useLanguage } from "@/lib/language-context";
 import { useUserRole } from "@/lib/user-context";
 import { canUseEmailNotification, canUseKeywords, canUseRss, maxCategories, maxKeywords } from "@/lib/permissions";
+import { useFontSize, FONT_SIZE_LEVELS } from "@/lib/font-size-context";
 
 export default function SettingsPage() {
   const router = useRouter();
   const { t } = useLanguage();
   const role = useUserRole();
+  const { level: fontLevel, setLevel: setFontLevel } = useFontSize();
   const emailNotifEnabled = canUseEmailNotification(role);
   const keywordsEnabled = canUseKeywords(role);
   const rssEnabled = canUseRss(role);
@@ -130,6 +132,39 @@ export default function SettingsPage() {
               <Input type="time" value={notificationTime} onChange={(e) => setNotificationTime(e.target.value)} className="w-32" />
             </div>
           )}
+        </CardContent>
+      </Card>
+
+      {/* 화면 설정 */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg">{t.displaySettings}</CardTitle>
+          <CardDescription>{t.displaySettingsDesc}</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div>
+            <Label>{t.fontSize}</Label>
+            <p className="text-sm text-muted-foreground">{t.fontSizeDesc}</p>
+          </div>
+          <div className="flex items-center gap-2">
+            {FONT_SIZE_LEVELS.map((pct, idx) => {
+              const lv = idx + 1;
+              const active = lv === fontLevel;
+              return (
+                <button
+                  key={lv}
+                  type="button"
+                  onClick={() => setFontLevel(lv)}
+                  className={`flex-1 rounded-md border px-3 py-2 text-center transition-colors ${
+                    active ? "border-primary bg-primary/10 text-primary" : "border-border hover:bg-muted"
+                  }`}
+                >
+                  <div className="font-semibold" style={{ fontSize: `${Math.max(12, pct * 0.14)}px` }}>A</div>
+                  <div className="text-xs text-muted-foreground mt-0.5">{pct}%</div>
+                </button>
+              );
+            })}
+          </div>
         </CardContent>
       </Card>
 
