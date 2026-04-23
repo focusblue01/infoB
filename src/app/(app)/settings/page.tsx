@@ -16,13 +16,13 @@ import { Save, Loader2 } from "lucide-react";
 import { useLanguage } from "@/lib/language-context";
 import { useUserRole } from "@/lib/user-context";
 import { canUseEmailNotification, canUseKeywords, canUseRss, maxCategories, maxKeywords } from "@/lib/permissions";
-import { useFontSize, FONT_SIZE_LEVELS } from "@/lib/font-size-context";
+import { useFontSize, FONT_SIZE_MIN, FONT_SIZE_MAX, FONT_SIZE_STEP } from "@/lib/font-size-context";
 
 export default function SettingsPage() {
   const router = useRouter();
   const { t } = useLanguage();
   const role = useUserRole();
-  const { level: fontLevel, setLevel: setFontLevel } = useFontSize();
+  const { percent: fontPercent, setPercent: setFontPercent } = useFontSize();
   const emailNotifEnabled = canUseEmailNotification(role);
   const keywordsEnabled = canUseKeywords(role);
   const rssEnabled = canUseRss(role);
@@ -146,24 +146,30 @@ export default function SettingsPage() {
             <Label>{t.fontSize}</Label>
             <p className="text-sm text-muted-foreground">{t.fontSizeDesc}</p>
           </div>
-          <div className="flex items-center gap-2">
-            {FONT_SIZE_LEVELS.map((pct, idx) => {
-              const lv = idx + 1;
-              const active = lv === fontLevel;
-              return (
-                <button
-                  key={lv}
-                  type="button"
-                  onClick={() => setFontLevel(lv)}
-                  className={`flex-1 rounded-md border px-3 py-2 text-center transition-colors ${
-                    active ? "border-primary bg-primary/10 text-primary" : "border-border hover:bg-muted"
-                  }`}
-                >
-                  <div className="font-semibold" style={{ fontSize: `${Math.max(12, pct * 0.14)}px` }}>A</div>
-                  <div className="text-xs text-muted-foreground mt-0.5">{pct}%</div>
-                </button>
-              );
-            })}
+          <div className="flex items-center gap-4">
+            <div
+              className="flex h-16 w-16 shrink-0 items-center justify-center rounded-md border bg-muted/30 font-semibold leading-none"
+              style={{ fontSize: `${Math.max(14, fontPercent * 0.32)}px` }}
+              aria-hidden
+            >
+              A
+            </div>
+            <div className="flex-1 space-y-1.5">
+              <input
+                type="range"
+                min={FONT_SIZE_MIN}
+                max={FONT_SIZE_MAX}
+                step={FONT_SIZE_STEP}
+                value={fontPercent}
+                onChange={(e) => setFontPercent(Number(e.target.value))}
+                className="w-full accent-primary"
+              />
+              <div className="flex justify-between text-xs text-muted-foreground">
+                <span>{FONT_SIZE_MIN}%</span>
+                <span className="font-medium text-foreground">{fontPercent}%</span>
+                <span>{FONT_SIZE_MAX}%</span>
+              </div>
+            </div>
           </div>
         </CardContent>
       </Card>

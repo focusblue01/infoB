@@ -2,46 +2,48 @@
 
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 
-export const FONT_SIZE_LEVELS = [50, 80, 100, 120, 150] as const;
-export const DEFAULT_LEVEL = 3;
-const STORAGE_KEY = "fontSizeLevel";
+export const FONT_SIZE_MIN = 50;
+export const FONT_SIZE_MAX = 150;
+export const FONT_SIZE_DEFAULT = 100;
+export const FONT_SIZE_STEP = 5;
+const STORAGE_KEY = "fontSizePercent";
 
 type Ctx = {
-  level: number;
   percent: number;
-  setLevel: (lv: number) => void;
+  setPercent: (pct: number) => void;
 };
 
 const FontSizeContext = createContext<Ctx | null>(null);
 
+function clamp(v: number) {
+  return Math.max(FONT_SIZE_MIN, Math.min(FONT_SIZE_MAX, v));
+}
+
 export function FontSizeProvider({ children }: { children: ReactNode }) {
-  const [level, setLevelState] = useState<number>(DEFAULT_LEVEL);
+  const [percent, setPercentState] = useState<number>(FONT_SIZE_DEFAULT);
 
   useEffect(() => {
     const saved = Number(localStorage.getItem(STORAGE_KEY));
-    if (saved >= 1 && saved <= FONT_SIZE_LEVELS.length) {
-      setLevelState(saved);
+    if (saved >= FONT_SIZE_MIN && saved <= FONT_SIZE_MAX) {
+      setPercentState(saved);
     }
   }, []);
 
   useEffect(() => {
-    const pct = FONT_SIZE_LEVELS[level - 1] ?? 100;
-    document.documentElement.style.fontSize = `${pct}%`;
+    document.documentElement.style.fontSize = `${percent}%`;
     return () => {
       document.documentElement.style.fontSize = "";
     };
-  }, [level]);
+  }, [percent]);
 
-  function setLevel(lv: number) {
-    const clamped = Math.max(1, Math.min(FONT_SIZE_LEVELS.length, lv));
-    setLevelState(clamped);
-    localStorage.setItem(STORAGE_KEY, String(clamped));
+  function setPercent(pct: number) {
+    const v = clamp(Math.round(pct));
+    setPercentState(v);
+    localStorage.setItem(STORAGE_KEY, String(v));
   }
 
-  const percent = FONT_SIZE_LEVELS[level - 1] ?? 100;
-
   return (
-    <FontSizeContext.Provider value={{ level, percent, setLevel }}>
+    <FontSizeContext.Provider value={{ percent, setPercent }}>
       {children}
     </FontSizeContext.Provider>
   );
