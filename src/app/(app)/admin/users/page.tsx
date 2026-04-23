@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Loader2, Flame } from "lucide-react";
 import type { UserRole } from "@/types";
+import { useLanguage } from "@/lib/language-context";
 
 interface AdminUser {
   id: string;
@@ -17,14 +18,6 @@ interface AdminUser {
   created_at: string;
 }
 
-const ROLE_LABELS: Record<UserRole, string> = {
-  A: "Admin",
-  T: "Tester",
-  N: "Free",
-  R: "Paid",
-  S: "Special",
-};
-
 const ROLE_COLORS: Record<UserRole, string> = {
   A: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200",
   T: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200",
@@ -34,6 +27,7 @@ const ROLE_COLORS: Record<UserRole, string> = {
 };
 
 export default function AdminUsersPage() {
+  const { t } = useLanguage();
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState<string | null>(null);
@@ -63,8 +57,8 @@ export default function AdminUsersPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold">Users</h1>
-        <p className="text-sm text-muted-foreground mt-1">{users.length} total users</p>
+        <h1 className="text-2xl font-bold">{t.adminNavUsers}</h1>
+        <p className="text-sm text-muted-foreground mt-1">{t.adminTotalUsers(users.length)}</p>
       </div>
 
       {loading ? (
@@ -87,18 +81,18 @@ export default function AdminUsersPage() {
                 </div>
                 <div className="flex items-center gap-2 mt-0.5">
                   <span className="text-xs text-muted-foreground">
-                    Joined {new Date(user.created_at).toLocaleDateString()}
+                    {t.adminJoined} {new Date(user.created_at).toLocaleDateString()}
                   </span>
                   {!user.onboarding_completed && (
-                    <Badge variant="outline" className="text-xs">Onboarding</Badge>
+                    <Badge variant="outline" className="text-xs">{t.adminOnboarding}</Badge>
                   )}
                   {user.notification_enabled && (
-                    <Badge variant="outline" className="text-xs">Email ON</Badge>
+                    <Badge variant="outline" className="text-xs">{t.adminEmailOn}</Badge>
                   )}
                 </div>
               </div>
               <div className="flex items-center gap-2 shrink-0">
-                <Badge className={ROLE_COLORS[user.role]}>{ROLE_LABELS[user.role]}</Badge>
+                <Badge className={ROLE_COLORS[user.role]}>{t.adminRoleLabels[user.role]}</Badge>
                 {saving === user.id ? (
                   <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
                 ) : (
@@ -107,8 +101,8 @@ export default function AdminUsersPage() {
                     onChange={(e) => updateRole(user.id, e.target.value as UserRole)}
                     className="h-8 w-28 rounded-md border border-input bg-background px-2 text-xs"
                   >
-                    {(Object.entries(ROLE_LABELS) as [UserRole, string][]).map(([role, label]) => (
-                      <option key={role} value={role}>{label}</option>
+                    {(Object.keys(t.adminRoleLabels) as UserRole[]).map((role) => (
+                      <option key={role} value={role}>{t.adminRoleLabels[role]}</option>
                     ))}
                   </select>
                 )}

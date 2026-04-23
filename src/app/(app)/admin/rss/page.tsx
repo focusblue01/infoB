@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Trash2, Plus, Loader2 } from "lucide-react";
 import { CATEGORY_LABELS, type NewsCategory } from "@/types";
+import { useLanguage } from "@/lib/language-context";
 
 interface RssSource {
   id: string;
@@ -20,6 +21,7 @@ interface RssSource {
 const CATEGORIES = Object.entries(CATEGORY_LABELS) as [NewsCategory, string][];
 
 export default function AdminRssPage() {
+  const { t } = useLanguage();
   const [sources, setSources] = useState<RssSource[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState<string | null>(null);
@@ -47,7 +49,7 @@ export default function AdminRssPage() {
   }
 
   async function deleteSource(id: string) {
-    if (!confirm("Delete this RSS source?")) return;
+    if (!confirm(t.adminDeleteRssConfirm)) return;
     setSaving(id);
     await fetch(`/api/admin/rss?id=${id}`, { method: "DELETE" });
     setSources((prev) => prev.filter((s) => s.id !== id));
@@ -79,18 +81,16 @@ export default function AdminRssPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">RSS Sources</h1>
-          <p className="text-sm text-muted-foreground mt-1">{activeCount} active / {sources.length} total</p>
-        </div>
+      <div>
+        <h1 className="text-2xl font-bold">{t.adminNavRss}</h1>
+        <p className="text-sm text-muted-foreground mt-1">{t.adminActiveRss(activeCount, sources.length)}</p>
       </div>
 
       {/* Add new source */}
       <div className="rounded-lg border p-4 space-y-3">
-        <p className="text-sm font-semibold">Add New Source</p>
+        <p className="text-sm font-semibold">{t.adminAddSource}</p>
         <div className="grid sm:grid-cols-2 gap-2">
-          <Input placeholder="Source name" value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} />
+          <Input placeholder={t.adminSourceName} value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} />
           <Input placeholder="RSS URL" value={form.url} onChange={(e) => setForm((f) => ({ ...f, url: e.target.value }))} />
         </div>
         <div className="flex gap-2">
@@ -99,21 +99,21 @@ export default function AdminRssPage() {
             onChange={(e) => setForm((f) => ({ ...f, category: e.target.value }))}
             className="h-10 w-44 rounded-md border border-input bg-background px-3 text-sm"
           >
-            <option value="">No category</option>
+            <option value="">{t.adminNoCategory}</option>
             {CATEGORIES.map(([key, label]) => (
               <option key={key} value={key}>{label}</option>
             ))}
           </select>
           <Input
             type="number"
-            placeholder="Priority"
-            className="w-24"
+            placeholder={t.adminPriority}
+            className="w-28"
             value={form.priority}
             onChange={(e) => setForm((f) => ({ ...f, priority: e.target.value }))}
           />
           <Button onClick={addSource} disabled={adding || !form.name || !form.url} className="gap-1">
             {adding ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
-            Add
+            {t.adminAdd}
           </Button>
         </div>
       </div>
@@ -137,7 +137,7 @@ export default function AdminRssPage() {
                   <span className="text-sm font-medium">{source.name}</span>
                   {source.category && (
                     <Badge variant="secondary" className="text-xs">
-                      {CATEGORY_LABELS[source.category as NewsCategory] ?? source.category}
+                      {t.categoryLabels[source.category as NewsCategory] ?? source.category}
                     </Badge>
                   )}
                   <span className="text-xs text-muted-foreground">P{source.priority}</span>

@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Loader2, Trash2, Users } from "lucide-react";
 import { CATEGORY_LABELS, type NewsCategory } from "@/types";
+import { useLanguage } from "@/lib/language-context";
 
 interface InterestGroup {
   id: string;
@@ -17,6 +18,7 @@ interface InterestGroup {
 }
 
 export default function AdminCategoriesPage() {
+  const { t } = useLanguage();
   const [groups, setGroups] = useState<InterestGroup[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState<string | null>(null);
@@ -42,7 +44,7 @@ export default function AdminCategoriesPage() {
   }
 
   async function deleteGroup(id: string) {
-    if (!confirm("Delete this interest group? This will remove related summaries links.")) return;
+    if (!confirm(t.adminDeleteGroupConfirm)) return;
     setSaving(id);
     await fetch(`/api/admin/categories?id=${id}`, { method: "DELETE" });
     setGroups((prev) => prev.filter((g) => g.id !== id));
@@ -55,10 +57,12 @@ export default function AdminCategoriesPage() {
   function GroupList({ items, title }: { items: InterestGroup[]; title: string }) {
     return (
       <div className="space-y-2">
-        <h2 className="text-base font-semibold">{title} <span className="text-muted-foreground font-normal text-sm">({items.length})</span></h2>
+        <h2 className="text-base font-semibold">
+          {title} <span className="text-muted-foreground font-normal text-sm">({items.length})</span>
+        </h2>
         <div className="rounded-lg border divide-y">
           {items.length === 0 && (
-            <p className="px-4 py-3 text-sm text-muted-foreground">No items</p>
+            <p className="px-4 py-3 text-sm text-muted-foreground">{t.adminNoItems}</p>
           )}
           {items.map((group) => (
             <div key={group.id} className={`flex items-center gap-3 px-4 py-3 ${!group.is_active ? "opacity-50" : ""}`}>
@@ -71,7 +75,7 @@ export default function AdminCategoriesPage() {
                 <div className="flex items-center gap-2 flex-wrap">
                   {group.group_type === "category" ? (
                     <Badge variant="secondary">
-                      {CATEGORY_LABELS[group.group_key as NewsCategory] ?? group.group_key}
+                      {t.categoryLabels[group.group_key as NewsCategory] ?? group.group_key}
                     </Badge>
                   ) : (
                     <span className="text-sm font-medium">{group.group_key}</span>
@@ -105,9 +109,9 @@ export default function AdminCategoriesPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold">Categories & Keywords</h1>
+        <h1 className="text-2xl font-bold">{t.adminNavCategories}</h1>
         <p className="text-sm text-muted-foreground mt-1">
-          {groups.filter((g) => g.is_active).length} active / {groups.length} total interest groups
+          {t.adminActiveGroups(groups.filter((g) => g.is_active).length, groups.length)}
         </p>
       </div>
 
@@ -117,8 +121,8 @@ export default function AdminCategoriesPage() {
         </div>
       ) : (
         <div className="space-y-8">
-          <GroupList items={categoryGroups} title="Category Groups" />
-          <GroupList items={keywordGroups} title="Keyword Groups" />
+          <GroupList items={categoryGroups} title={t.adminCategoryGroups} />
+          <GroupList items={keywordGroups} title={t.adminKeywordGroups} />
         </div>
       )}
     </div>
