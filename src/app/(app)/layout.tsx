@@ -30,7 +30,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           streakCount={profile?.streak_count ?? 0}
           isAdmin={profile?.role === "A"}
         />
-        <main className="px-0 md:px-6 py-6">
+        <main className="mx-auto max-w-5xl px-0 md:px-4 py-6">
           {children}
         </main>
       </div>
