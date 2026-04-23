@@ -104,6 +104,7 @@ const T = {
     displaySettingsDesc: "글자 크기 등 화면 표시 설정",
     fontSize: "글자 크기",
     fontSizeDesc: "화면 전체 글자 크기를 조정합니다",
+    apply: "적용",
 
     // Onboarding components
     interestKeywordsLabel: "관심 키워드",
@@ -259,6 +260,7 @@ const T = {
     displaySettingsDesc: "Font size and display preferences",
     fontSize: "Font size",
     fontSizeDesc: "Adjust text size across the app",
+    apply: "Apply",
 
     // Onboarding components
     interestKeywordsLabel: "Interest Keywords",
