@@ -15,7 +15,7 @@ import type { NewsCategory } from "@/types";
 import { Save, Loader2 } from "lucide-react";
 import { useLanguage } from "@/lib/language-context";
 import { useUserRole } from "@/lib/user-context";
-import { canUseEmailNotification, canUseKeywords, maxCategories } from "@/lib/permissions";
+import { canUseEmailNotification, canUseKeywords, canUseRss, maxCategories, maxKeywords } from "@/lib/permissions";
 
 export default function SettingsPage() {
   const router = useRouter();
@@ -23,7 +23,9 @@ export default function SettingsPage() {
   const role = useUserRole();
   const emailNotifEnabled = canUseEmailNotification(role);
   const keywordsEnabled = canUseKeywords(role);
+  const rssEnabled = canUseRss(role);
   const catLimit = maxCategories(role);
+  const kwLimit = maxKeywords(role);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -145,11 +147,12 @@ export default function SettingsPage() {
           <Separator />
           {keywordsEnabled ? (
             <>
-              <KeywordInput keywords={keywords} onChange={setKeywords} />
+              <KeywordInput keywords={keywords} onChange={setKeywords} maxKeywords={kwLimit} />
               <KeywordInput
                 keywords={excludeKeywords}
                 onChange={setExcludeKeywords}
                 variant="exclude"
+                maxKeywords={kwLimit}
               />
             </>
           ) : (
@@ -158,7 +161,7 @@ export default function SettingsPage() {
             </div>
           )}
           <Separator />
-          <RssSourceInput sources={rssSources} onChange={setRssSources} />
+          <RssSourceInput sources={rssSources} onChange={setRssSources} disabled={!rssEnabled} />
         </CardContent>
       </Card>
     </div>

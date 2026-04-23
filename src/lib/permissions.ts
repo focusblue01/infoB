@@ -21,6 +21,16 @@ export function canUseKeywords(role: UserRole) {
   return role !== "N";
 }
 
+export function canUseRss(role: UserRole) {
+  return FULL_ROLES.includes(role);
+}
+
+export function maxKeywords(role: UserRole): number {
+  if (role === "N") return 0;
+  if (role === "R") return 3;
+  return 5; // S, A, T
+}
+
 export function canUseEmailNotification(role: UserRole) {
   return FULL_ROLES.includes(role);
 }

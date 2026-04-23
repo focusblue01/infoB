@@ -93,7 +93,8 @@ const T = {
 
     // Onboarding components
     interestKeywordsLabel: "관심 키워드",
-    keywordPlaceholder: "키워드 입력 후 Enter",
+    keywordPlaceholder: "단어 입력 후 Enter (띄어쓰기 불가)",
+    keywordSingleWordOnly: "키워드는 띄어쓰기 없는 단어만 입력 가능합니다.",
     excludeKeywordsLabel: "제외 키워드",
     excludeKeywordPlaceholder: "보고 싶지 않은 키워드",
     rssSourcesLabel: "RSS 소스 (선택)",
@@ -233,7 +234,8 @@ const T = {
 
     // Onboarding components
     interestKeywordsLabel: "Interest Keywords",
-    keywordPlaceholder: "Type keyword and press Enter",
+    keywordPlaceholder: "Single word + Enter (no spaces)",
+    keywordSingleWordOnly: "Keywords must be a single word with no spaces.",
     excludeKeywordsLabel: "Exclude Keywords",
     excludeKeywordPlaceholder: "Keywords to filter out",
     rssSourcesLabel: "RSS Sources (Optional)",

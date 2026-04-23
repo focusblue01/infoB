@@ -11,7 +11,7 @@ import { RssSourceInput } from "@/components/onboarding/RssSourceInput";
 import type { NewsCategory, UserRole } from "@/types";
 import { ArrowRight, ArrowLeft, Check } from "lucide-react";
 import { LanguageProvider, useLanguage } from "@/lib/language-context";
-import { canUseKeywords, maxCategories } from "@/lib/permissions";
+import { canUseKeywords, canUseRss, maxCategories, maxKeywords } from "@/lib/permissions";
 
 function OnboardingContent() {
   const [step, setStep] = useState(0);
@@ -36,7 +36,9 @@ function OnboardingContent() {
   }, []);
 
   const keywordsEnabled = canUseKeywords(role);
+  const rssEnabled = canUseRss(role);
   const catLimit = maxCategories(role);
+  const kwLimit = maxKeywords(role);
 
   async function handleComplete() {
     setLoading(true);
@@ -72,8 +74,8 @@ function OnboardingContent() {
         : "Enter specific topics as keywords. (e.g. AI, semiconductors, Tesla)",
       content: (
         <div className="space-y-6">
-          <KeywordInput keywords={keywords} onChange={setKeywords} />
-          <KeywordInput keywords={excludeKeywords} onChange={setExcludeKeywords} variant="exclude" />
+          <KeywordInput keywords={keywords} onChange={setKeywords} maxKeywords={kwLimit} />
+          <KeywordInput keywords={excludeKeywords} onChange={setExcludeKeywords} variant="exclude" maxKeywords={kwLimit} />
         </div>
       ),
       valid: true,
@@ -83,7 +85,7 @@ function OnboardingContent() {
       desc: isKo
         ? "직접 추가하고 싶은 뉴스 소스의 RSS URL을 입력하세요."
         : "Enter the RSS URL of any news source you'd like to add.",
-      content: <RssSourceInput sources={rssSources} onChange={setRssSources} />,
+      content: <RssSourceInput sources={rssSources} onChange={setRssSources} disabled={!rssEnabled} />,
       valid: true,
     },
   ];
