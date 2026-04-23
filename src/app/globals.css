@@ -53,3 +53,27 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* 모바일에서 상단 네비게이션은 사용자 글자 크기 조절 영향을 받지 않도록 rem 기반 사이즈 고정 */
+@media (max-width: 767px) {
+  nav.nav-scale-lock { font-size: 16px; }
+  nav.nav-scale-lock .text-xs { font-size: 12px; line-height: 1rem; }
+  nav.nav-scale-lock .text-sm { font-size: 14px; line-height: 1.25rem; }
+  nav.nav-scale-lock .text-base { font-size: 16px; line-height: 1.5rem; }
+  nav.nav-scale-lock .text-lg { font-size: 18px; line-height: 1.75rem; }
+  nav.nav-scale-lock .h-4 { height: 16px; }
+  nav.nav-scale-lock .w-4 { width: 16px; }
+  nav.nav-scale-lock .h-5 { height: 20px; }
+  nav.nav-scale-lock .w-5 { width: 20px; }
+  nav.nav-scale-lock .h-14 { height: 56px; }
+  nav.nav-scale-lock .gap-1 { gap: 4px; }
+  nav.nav-scale-lock .gap-1\.5 { gap: 6px; }
+  nav.nav-scale-lock .gap-2 { gap: 8px; }
+  nav.nav-scale-lock .gap-6 { gap: 24px; }
+  nav.nav-scale-lock .px-4 { padding-left: 16px; padding-right: 16px; }
+  nav.nav-scale-lock .p-4 { padding: 16px; }
+  nav.nav-scale-lock .py-0\.5 { padding-top: 2px; padding-bottom: 2px; }
+  nav.nav-scale-lock .px-2 { padding-left: 8px; padding-right: 8px; }
+  nav.nav-scale-lock .pb-2 { padding-bottom: 8px; }
+  nav.nav-scale-lock .space-y-2 > :not([hidden]) ~ :not([hidden]) { margin-top: 8px; }
+}
