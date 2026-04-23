@@ -108,8 +108,8 @@ export default function SummaryDetailPage() {
   const displayContent = language === "en" && summary.content_en ? summary.content_en : summary.content;
 
   return (
-    <div className="space-y-6 max-w-3xl mx-auto">
-      <div className="flex items-center justify-between">
+    <div className="space-y-6">
+      <div className="flex items-center justify-between max-md:px-3">
         <Button variant="ghost" onClick={() => router.back()} className="gap-1">
           <ArrowLeft className="h-4 w-4" /> {t.backToFeed}
         </Button>

@@ -153,7 +153,7 @@ export default function FeedPage() {
     <div className="space-y-6">
       <InterestsSummary />
 
-      <div className="flex items-center justify-between flex-wrap gap-3">
+      <div className="flex items-center justify-between flex-wrap gap-3 max-md:px-3">
         <div className="flex items-center gap-3">
           <h1 className="text-2xl font-bold">{t.todayBriefing}</h1>
           {showGenerate && (
@@ -184,7 +184,7 @@ export default function FeedPage() {
       </div>
 
       {generateMsg && (
-        <div className="rounded-md bg-muted px-4 py-2 text-sm">{generateMsg}</div>
+        <div className="rounded-md bg-muted px-4 py-2 text-sm max-md:mx-3">{generateMsg}</div>
       )}
 
       {loading ? (
@@ -194,7 +194,7 @@ export default function FeedPage() {
           ))}
         </div>
       ) : summaries.length === 0 ? (
-        <div className="text-center py-20 space-y-4">
+        <div className="text-center py-20 space-y-4 max-md:px-3">
           <Newspaper className="h-12 w-12 mx-auto text-muted-foreground/50" />
           <div>
             <p className="font-medium">{t.noBriefings}</p>

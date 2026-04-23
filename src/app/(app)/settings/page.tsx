@@ -87,8 +87,8 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="space-y-6 max-w-3xl mx-auto">
-      <div className="flex items-center justify-between">
+    <div className="space-y-6">
+      <div className="flex items-center justify-between max-md:px-3">
         <h1 className="text-2xl font-bold">{t.settings}</h1>
         <Button onClick={handleSave} disabled={saving} className="gap-1">
           {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
