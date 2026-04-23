@@ -1,7 +1,7 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { fetchByKeywords, fetchByCategory } from "./newsapi";
 import { fetchRssFeed } from "./rss";
-import { DEFAULT_RSS_SOURCES, type DefaultRssSource } from "./defaultSources";
+import type { DefaultRssSource } from "./defaultSources";
 import type { RawArticle } from "./types";
 import type { NewsCategory } from "@/types";
 
@@ -61,15 +61,17 @@ export async function collectNews(): Promise<{ collected: number; skipped: numbe
     .eq("is_exclude", true);
   const excludeSet = new Set((excludeKws ?? []).map((k: any) => k.keyword.toLowerCase()));
 
-  // 3. RSS 소스 조회 (기본 소스 + 사용자 등록 소스 병합, URL 중복 제거)
-  const { data: userSources } = await supabase
-    .from("user_sources")
-    .select("name, url")
-    .eq("is_active", true);
+  // 3. RSS 소스 조회 (admin rss_sources + 사용자 등록 소스 병합, URL 중복 제거)
+  const [{ data: adminSources }, { data: userSources }] = await Promise.all([
+    supabase.from("rss_sources").select("name, url, category, priority").eq("is_active", true),
+    supabase.from("user_sources").select("name, url").eq("is_active", true),
+  ]);
 
   const userUrls = new Set((userSources ?? []).map((s: any) => s.url));
   const rssSources: DefaultRssSource[] = [
-    ...DEFAULT_RSS_SOURCES.filter((s) => !userUrls.has(s.url)),
+    ...(adminSources ?? []).filter((s: any) => !userUrls.has(s.url)).map((s: any) => ({
+      name: s.name, url: s.url, category: s.category ?? undefined, priority: s.priority ?? 10,
+    })),
     ...(userSources ?? []).map((s: any) => ({ name: s.name, url: s.url })),
   ];
 
