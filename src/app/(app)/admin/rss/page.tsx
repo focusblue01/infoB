@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
-import { Trash2, Plus, Loader2 } from "lucide-react";
+import { Trash2, Plus, Loader2, Pencil, Check, X } from "lucide-react";
 import { CATEGORY_LABELS, type NewsCategory } from "@/types";
 import { useLanguage } from "@/lib/language-context";
 
@@ -27,6 +27,8 @@ export default function AdminRssPage() {
   const [saving, setSaving] = useState<string | null>(null);
   const [form, setForm] = useState({ name: "", url: "", category: "", priority: "10" });
   const [adding, setAdding] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState({ name: "", url: "", category: "", priority: "10" });
 
   useEffect(() => { fetchSources(); }, []);
 
@@ -77,27 +79,63 @@ export default function AdminRssPage() {
     setAdding(false);
   }
 
+  function startEdit(source: RssSource) {
+    setEditingId(source.id);
+    setEditForm({
+      name: source.name,
+      url: source.url,
+      category: source.category ?? "",
+      priority: String(source.priority),
+    });
+  }
+
+  function cancelEdit() {
+    setEditingId(null);
+  }
+
+  async function saveEdit(id: string) {
+    if (!editForm.name || !editForm.url) return;
+    setSaving(id);
+    const res = await fetch("/api/admin/rss", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        id,
+        name: editForm.name,
+        url: editForm.url,
+        category: editForm.category || null,
+        priority: parseInt(editForm.priority) || 10,
+      }),
+    });
+    const data = await res.json();
+    if (data.source) {
+      setSources((prev) => prev.map((s) => s.id === id ? data.source : s));
+      setEditingId(null);
+    }
+    setSaving(null);
+  }
+
   const activeCount = sources.filter((s) => s.is_active).length;
 
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold">{t.adminNavRss}</h1>
+        <h1 className="text-xl md:text-2xl font-bold">{t.adminNavRss}</h1>
         <p className="text-sm text-muted-foreground mt-1">{t.adminActiveRss(activeCount, sources.length)}</p>
       </div>
 
       {/* Add new source */}
-      <div className="rounded-lg border p-4 space-y-3">
+      <div className="rounded-lg border p-3 md:p-4 space-y-3">
         <p className="text-sm font-semibold">{t.adminAddSource}</p>
         <div className="grid sm:grid-cols-2 gap-2">
           <Input placeholder={t.adminSourceName} value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} />
           <Input placeholder="RSS URL" value={form.url} onChange={(e) => setForm((f) => ({ ...f, url: e.target.value }))} />
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <select
             value={form.category}
             onChange={(e) => setForm((f) => ({ ...f, category: e.target.value }))}
-            className="h-10 w-44 rounded-md border border-input bg-background px-3 text-sm"
+            className="h-10 w-full sm:w-44 rounded-md border border-input bg-background px-3 text-sm"
           >
             <option value="">{t.adminNoCategory}</option>
             {CATEGORIES.map(([key, label]) => (
@@ -107,11 +145,11 @@ export default function AdminRssPage() {
           <Input
             type="number"
             placeholder={t.adminPriority}
-            className="w-28"
+            className="w-24 sm:w-28"
             value={form.priority}
             onChange={(e) => setForm((f) => ({ ...f, priority: e.target.value }))}
           />
-          <Button onClick={addSource} disabled={adding || !form.name || !form.url} className="gap-1">
+          <Button onClick={addSource} disabled={adding || !form.name || !form.url} className="gap-1 flex-1 sm:flex-none">
             {adding ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
             {t.adminAdd}
           </Button>
@@ -125,36 +163,98 @@ export default function AdminRssPage() {
         </div>
       ) : (
         <div className="rounded-lg border divide-y">
-          {sources.map((source) => (
-            <div key={source.id} className={`flex items-center gap-3 px-4 py-3 ${!source.is_active ? "opacity-50" : ""}`}>
-              <Switch
-                checked={source.is_active}
-                onCheckedChange={() => toggleActive(source)}
-                disabled={saving === source.id}
-              />
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-sm font-medium">{source.name}</span>
-                  {source.category && (
-                    <Badge variant="secondary" className="text-xs">
-                      {t.categoryLabels[source.category as NewsCategory] ?? source.category}
-                    </Badge>
-                  )}
-                  <span className="text-xs text-muted-foreground">P{source.priority}</span>
+          {sources.map((source) => {
+            const isEditing = editingId === source.id;
+            if (isEditing) {
+              return (
+                <div key={source.id} className="p-3 space-y-2 bg-muted/30">
+                  <div className="grid sm:grid-cols-2 gap-2">
+                    <Input
+                      placeholder={t.adminSourceName}
+                      value={editForm.name}
+                      onChange={(e) => setEditForm((f) => ({ ...f, name: e.target.value }))}
+                    />
+                    <Input
+                      placeholder="RSS URL"
+                      value={editForm.url}
+                      onChange={(e) => setEditForm((f) => ({ ...f, url: e.target.value }))}
+                    />
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <select
+                      value={editForm.category}
+                      onChange={(e) => setEditForm((f) => ({ ...f, category: e.target.value }))}
+                      className="h-10 w-full sm:w-44 rounded-md border border-input bg-background px-3 text-sm"
+                    >
+                      <option value="">{t.adminNoCategory}</option>
+                      {CATEGORIES.map(([key, label]) => (
+                        <option key={key} value={key}>{label}</option>
+                      ))}
+                    </select>
+                    <Input
+                      type="number"
+                      placeholder={t.adminPriority}
+                      className="w-24 sm:w-28"
+                      value={editForm.priority}
+                      onChange={(e) => setEditForm((f) => ({ ...f, priority: e.target.value }))}
+                    />
+                    <Button
+                      onClick={() => saveEdit(source.id)}
+                      disabled={saving === source.id || !editForm.name || !editForm.url}
+                      size="sm"
+                      className="gap-1"
+                    >
+                      {saving === source.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
+                      {t.adminSave}
+                    </Button>
+                    <Button onClick={cancelEdit} variant="outline" size="sm" className="gap-1">
+                      <X className="h-4 w-4" />
+                      {t.adminCancel}
+                    </Button>
+                  </div>
                 </div>
-                <p className="text-xs text-muted-foreground truncate">{source.url}</p>
+              );
+            }
+            return (
+              <div key={source.id} className={`flex items-center gap-2 md:gap-3 px-3 md:px-4 py-3 ${!source.is_active ? "opacity-50" : ""}`}>
+                <Switch
+                  checked={source.is_active}
+                  onCheckedChange={() => toggleActive(source)}
+                  disabled={saving === source.id}
+                />
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-sm font-medium">{source.name}</span>
+                    {source.category && (
+                      <Badge variant="secondary" className="text-xs">
+                        {t.categoryLabels[source.category as NewsCategory] ?? source.category}
+                      </Badge>
+                    )}
+                    <span className="text-xs text-muted-foreground">P{source.priority}</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground truncate">{source.url}</p>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => startEdit(source)}
+                  disabled={saving === source.id}
+                  className="shrink-0 h-8 w-8"
+                >
+                  <Pencil className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => deleteSource(source.id)}
+                  disabled={saving === source.id}
+                  className="shrink-0 h-8 w-8 text-destructive hover:text-destructive"
+                >
+                  {saving === source.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                </Button>
               </div>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => deleteSource(source.id)}
-                disabled={saving === source.id}
-                className="shrink-0 text-destructive hover:text-destructive"
-              >
-                {saving === source.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
-              </Button>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>

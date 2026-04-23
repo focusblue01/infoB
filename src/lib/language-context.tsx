@@ -48,6 +48,7 @@ const T = {
     generateSuccess: (c: number, s: number) => `✅ 수집 ${c}건 / 브리핑 ${s}개 생성`,
     generateFailed: "생성 실패",
     noArticlesFound: "최근 관련기사를 찾을 수 없습니다.",
+    upgradePlanRequired: "유료 플랜으로 업그레이드하면 이용 가능합니다.",
 
     // Admin
     adminDashboard: "관리자 대시보드",
@@ -68,6 +69,16 @@ const T = {
     adminDeleteGroupConfirm: "이 관심사 그룹을 삭제하시겠습니까? 관련 요약 링크도 삭제됩니다.",
     adminCategoryGroups: "카테고리 그룹",
     adminKeywordGroups: "키워드 그룹",
+    adminSave: "저장",
+    adminCancel: "취소",
+    adminSimilarKeywords: "유사 키워드",
+    adminSimilarKeywordPlaceholder: "유사 키워드 입력 후 Enter",
+    adminEditSimilar: "유사 키워드 편집",
+    adminMergeInto: "다른 그룹으로 통합",
+    adminSelectTarget: "통합할 대상 선택",
+    adminMerge: "통합",
+    adminMergeConfirm: (src: string, tgt: string) =>
+      `'${src}' 그룹을 '${tgt}' 그룹으로 통합하시겠습니까? 이 작업은 되돌릴 수 없습니다.`,
     adminActiveRss: (a: number, t: number) => `활성 ${a} / 전체 ${t}개 소스`,
     adminRoleLabels: { A: "관리자", T: "테스터", N: "무료", R: "유료", S: "스페셜" } as Record<string, string>,
     adminJoined: "가입",
@@ -92,7 +103,8 @@ const T = {
 
     // Onboarding components
     interestKeywordsLabel: "관심 키워드",
-    keywordPlaceholder: "키워드 입력 후 Enter",
+    keywordPlaceholder: "단어 입력 후 Enter (띄어쓰기 불가)",
+    keywordSingleWordOnly: "키워드는 띄어쓰기 없는 단어만 입력 가능합니다.",
     excludeKeywordsLabel: "제외 키워드",
     excludeKeywordPlaceholder: "보고 싶지 않은 키워드",
     rssSourcesLabel: "RSS 소스 (선택)",
@@ -187,6 +199,7 @@ const T = {
     generateSuccess: (c: number, s: number) => `✅ Collected ${c} / Generated ${s} briefings`,
     generateFailed: "Generation failed",
     noArticlesFound: "No recent articles found.",
+    upgradePlanRequired: "Upgrade your plan to unlock this feature.",
 
     // Admin
     adminDashboard: "Admin Dashboard",
@@ -207,6 +220,16 @@ const T = {
     adminDeleteGroupConfirm: "Delete this interest group? This will remove related summary links.",
     adminCategoryGroups: "Category Groups",
     adminKeywordGroups: "Keyword Groups",
+    adminSave: "Save",
+    adminCancel: "Cancel",
+    adminSimilarKeywords: "Similar Keywords",
+    adminSimilarKeywordPlaceholder: "Type a similar keyword + Enter",
+    adminEditSimilar: "Edit similar keywords",
+    adminMergeInto: "Merge into another group",
+    adminSelectTarget: "Select target group",
+    adminMerge: "Merge",
+    adminMergeConfirm: (src: string, tgt: string) =>
+      `Merge '${src}' into '${tgt}'? This action cannot be undone.`,
     adminActiveRss: (a: number, t: number) => `${a} active / ${t} total sources`,
     adminRoleLabels: { A: "Admin", T: "Tester", N: "Free", R: "Paid", S: "Special" } as Record<string, string>,
     adminJoined: "Joined",
@@ -231,7 +254,8 @@ const T = {
 
     // Onboarding components
     interestKeywordsLabel: "Interest Keywords",
-    keywordPlaceholder: "Type keyword and press Enter",
+    keywordPlaceholder: "Single word + Enter (no spaces)",
+    keywordSingleWordOnly: "Keywords must be a single word with no spaces.",
     excludeKeywordsLabel: "Exclude Keywords",
     excludeKeywordPlaceholder: "Keywords to filter out",
     rssSourcesLabel: "RSS Sources (Optional)",

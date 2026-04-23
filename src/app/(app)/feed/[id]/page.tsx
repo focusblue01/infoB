@@ -11,6 +11,8 @@ import { Separator } from "@/components/ui/separator";
 import { ArrowLeft, ExternalLink, Calendar, Loader2 } from "lucide-react";
 import { formatDate } from "@/lib/utils";
 import { useLanguage } from "@/lib/language-context";
+import { useUserRole } from "@/lib/user-context";
+import { canBookmark } from "@/lib/permissions";
 
 export default function SummaryDetailPage() {
   const params = useParams();
@@ -19,6 +21,8 @@ export default function SummaryDetailPage() {
   const [loading, setLoading] = useState(true);
   const [translating, setTranslating] = useState(false);
   const { language, t } = useLanguage();
+  const role = useUserRole();
+  const bookmarkEnabled = canBookmark(role);
 
   useEffect(() => {
     fetch(`/api/summaries/${params.id}`)
@@ -135,7 +139,7 @@ export default function SummaryDetailPage() {
                 {formatDate(summary.briefing_date)}
               </div>
             </div>
-            <BookmarkButton isBookmarked={data.is_bookmarked} onToggle={toggleBookmark} />
+            {bookmarkEnabled && <BookmarkButton isBookmarked={data.is_bookmarked} onToggle={toggleBookmark} />}
           </div>
         </CardHeader>
         <CardContent className="space-y-6">

@@ -21,13 +21,24 @@ export async function PATCH(request: Request) {
   if ("error" in auth) return auth.error;
   const { supabase } = auth;
 
-  const { id, is_active } = await request.json();
-  if (!id || typeof is_active !== "boolean")
-    return NextResponse.json({ error: "id and is_active required" }, { status: 400 });
+  const body = await request.json();
+  const { id } = body;
+  if (!id) return NextResponse.json({ error: "id required" }, { status: 400 });
+
+  const updates: Record<string, unknown> = {};
+  if (typeof body.is_active === "boolean") updates.is_active = body.is_active;
+  if (Array.isArray(body.similar_keywords)) {
+    updates.similar_keywords = body.similar_keywords.filter(
+      (k: unknown) => typeof k === "string" && k.trim().length > 0
+    );
+  }
+  if (Object.keys(updates).length === 0) {
+    return NextResponse.json({ error: "no valid fields" }, { status: 400 });
+  }
 
   const { data, error } = await supabase
     .from("interest_groups")
-    .update({ is_active })
+    .update(updates)
     .eq("id", id)
     .select()
     .single();

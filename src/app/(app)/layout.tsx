@@ -15,13 +15,15 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     .eq("id", user.id)
     .single();
 
+  const role = (profile?.role ?? "N") as import("@/types").UserRole;
+
   // 온보딩 미완료 시 온보딩 페이지로 리다이렉트
   if (profile && !profile.onboarding_completed) {
     redirect("/onboarding");
   }
 
   return (
-    <ClientWrapper>
+    <ClientWrapper role={role}>
       <div className="min-h-screen">
         <Navbar
           userName={profile?.display_name}

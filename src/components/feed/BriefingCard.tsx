@@ -20,11 +20,13 @@ interface BriefingCardProps {
   articleCount: number;
   isBookmarked: boolean;
   onBookmarkToggle: (id: string) => void;
+  showBookmark?: boolean;
 }
 
 export function BriefingCard({
   id, title, content, titleEn, contentEn,
   category, keywords, articleCount, isBookmarked, onBookmarkToggle,
+  showBookmark = true,
 }: BriefingCardProps) {
   const { language, t } = useLanguage();
   const displayTitle = language === "en" && titleEn ? titleEn : title;
@@ -49,7 +51,7 @@ export function BriefingCard({
               </h3>
             </Link>
           </div>
-          <BookmarkButton isBookmarked={isBookmarked} onToggle={() => onBookmarkToggle(id)} />
+          {showBookmark && <BookmarkButton isBookmarked={isBookmarked} onToggle={() => onBookmarkToggle(id)} />}
         </div>
       </CardHeader>
       <CardContent>
