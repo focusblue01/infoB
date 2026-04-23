@@ -80,6 +80,7 @@ export default function SettingsPage() {
           body: JSON.stringify({ categories, keywords, excludeKeywords, rssSources }),
         }),
       ]);
+      setFontPercent(pendingFontPercent);
       router.refresh();
     } finally {
       setSaving(false);
@@ -172,14 +173,6 @@ export default function SettingsPage() {
                 <span>{FONT_SIZE_MAX}%</span>
               </div>
             </div>
-            <Button
-              type="button"
-              size="sm"
-              onClick={() => setFontPercent(pendingFontPercent)}
-              disabled={pendingFontPercent === fontPercent}
-            >
-              {t.apply}
-            </Button>
           </div>
         </CardContent>
       </Card>
