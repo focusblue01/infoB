@@ -100,6 +100,10 @@ const T = {
     interests: "관심사",
     interestsDesc: "뉴스 수집 및 요약에 사용되는 관심사 설정",
     categoriesLabel: "카테고리",
+    displaySettings: "화면 설정",
+    displaySettingsDesc: "글자 크기 등 화면 표시 설정",
+    fontSize: "글자 크기",
+    fontSizeDesc: "화면 전체 글자 크기를 조정합니다",
 
     // Onboarding components
     interestKeywordsLabel: "관심 키워드",
@@ -251,6 +255,10 @@ const T = {
     interests: "Interests",
     interestsDesc: "Configure interests used for news collection & summarization",
     categoriesLabel: "Categories",
+    displaySettings: "Display",
+    displaySettingsDesc: "Font size and display preferences",
+    fontSize: "Font size",
+    fontSizeDesc: "Adjust text size across the app",
 
     // Onboarding components
     interestKeywordsLabel: "Interest Keywords",
