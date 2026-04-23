@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { BriefingCard } from "@/components/feed/BriefingCard";
 import { InterestsSummary } from "@/components/feed/InterestsSummary";
 import { Button } from "@/components/ui/button";
-import { ChevronLeft, ChevronRight, Newspaper, Sparkles, Loader2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, Newspaper, Sparkles, Loader2, AlertCircle } from "lucide-react";
 import { formatDate } from "@/lib/utils";
 import { useLanguage } from "@/lib/language-context";
 
@@ -20,6 +20,11 @@ interface SummaryItem {
   is_bookmarked: boolean;
 }
 
+interface MissingGroup {
+  key: string;
+  type: string;
+}
+
 function getKSTDate(): string {
   const now = new Date();
   const kst = new Date(now.getTime() + 9 * 60 * 60 * 1000);
@@ -29,6 +34,7 @@ function getKSTDate(): string {
 export default function FeedPage() {
   const [date, setDate] = useState(() => getKSTDate());
   const [summaries, setSummaries] = useState<SummaryItem[]>([]);
+  const [missingGroups, setMissingGroups] = useState<MissingGroup[]>([]);
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
   const [generateMsg, setGenerateMsg] = useState<string | null>(null);
@@ -52,6 +58,7 @@ export default function FeedPage() {
     const data = await res.json();
     const items = data.summaries ?? [];
     setSummaries(items);
+    setMissingGroups(data.missingGroups ?? []);
     setLoading(false);
     // 피드 로드 후 EN이면 번역 확인
     if (language === "en" && items.length > 0) {
@@ -205,6 +212,19 @@ export default function FeedPage() {
               onBookmarkToggle={toggleBookmark}
             />
           ))}
+          {missingGroups.filter((g) => g.type === "keyword").length > 0 && (
+            <div className="rounded-lg border border-yellow-200 bg-yellow-50 dark:border-yellow-800 dark:bg-yellow-950/30 px-4 py-3 space-y-2">
+              {missingGroups
+                .filter((g) => g.type === "keyword")
+                .map((g) => (
+                  <div key={g.key} className="flex items-center gap-2 text-sm text-yellow-800 dark:text-yellow-300">
+                    <AlertCircle className="h-4 w-4 shrink-0" />
+                    <span className="font-medium">{g.key}</span>
+                    <span className="text-yellow-700 dark:text-yellow-400">— {t.noArticlesFound}</span>
+                  </div>
+                ))}
+            </div>
+          )}
         </div>
       )}
     </div>

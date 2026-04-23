@@ -47,6 +47,7 @@ const T = {
     // Generate messages
     generateSuccess: (c: number, s: number) => `✅ 수집 ${c}건 / 브리핑 ${s}개 생성`,
     generateFailed: "생성 실패",
+    noArticlesFound: "최근 관련기사를 찾을 수 없습니다.",
 
     // Settings page
     settings: "설정",
@@ -159,6 +160,7 @@ const T = {
     // Generate messages
     generateSuccess: (c: number, s: number) => `✅ Collected ${c} / Generated ${s} briefings`,
     generateFailed: "Generation failed",
+    noArticlesFound: "No recent articles found.",
 
     // Settings page
     settings: "Settings",

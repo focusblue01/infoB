@@ -27,12 +27,12 @@ export async function GET(request: Request) {
 
   const { data: groups } = await supabase
     .from("interest_groups")
-    .select("id")
+    .select("id, group_key, group_type")
     .in("group_key", groupKeys);
 
   const groupIds = (groups ?? []).map((g: any) => g.id);
   if (groupIds.length === 0) {
-    return NextResponse.json({ summaries: [], date });
+    return NextResponse.json({ summaries: [], date, missingGroups: [] });
   }
 
   // 해당 날짜의 요약 조회
@@ -98,5 +98,11 @@ export async function GET(request: Request) {
     }
   }
 
-  return NextResponse.json({ summaries: enriched, date });
+  // 브리핑이 생성된 그룹 ID 집합
+  const summaryGroupIds = new Set((summaries ?? []).map((s: any) => s.interest_group_id));
+  const missingGroups = (groups ?? [])
+    .filter((g: any) => !summaryGroupIds.has(g.id))
+    .map((g: any) => ({ key: g.group_key, type: g.group_type }));
+
+  return NextResponse.json({ summaries: enriched, date, missingGroups });
 }
