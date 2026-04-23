@@ -14,29 +14,29 @@ function LandingContent() {
     <div className="min-h-screen">
       {/* 헤더 */}
       <header className="border-b">
-        <div className="mx-auto max-w-5xl flex h-12 items-center justify-between px-3">
-          <div className="flex items-center gap-1.5 font-bold text-base">
-            <Newspaper className="h-4 w-4 text-primary" />
-            <span className="hidden xs:inline">InfoB</span>
+        <div className="mx-auto max-w-5xl flex h-11 items-center justify-between px-3">
+          <div className="flex items-center gap-1 font-bold text-sm">
+            <Newspaper className="h-3.5 w-3.5 text-primary" />
+            InfoB
           </div>
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-0.5">
             {/* KO/EN 토글 */}
-            <div className="flex items-center gap-1">
-              <span className={`text-[10px] font-semibold transition-colors ${language === "ko" ? "text-foreground" : "text-muted-foreground"}`}>KO</span>
+            <div className="flex items-center gap-0.5">
+              <span className={`text-[9px] font-semibold transition-colors ${language === "ko" ? "text-foreground" : "text-muted-foreground"}`}>KO</span>
               <Switch
                 checked={language === "en"}
                 onCheckedChange={(checked) => setLanguage(checked ? "en" : "ko")}
                 aria-label={t.langLabel}
-                className="scale-75"
+                className="scale-[0.65]"
               />
-              <span className={`text-[10px] font-semibold transition-colors ${language === "en" ? "text-foreground" : "text-muted-foreground"}`}>EN</span>
+              <span className={`text-[9px] font-semibold transition-colors ${language === "en" ? "text-foreground" : "text-muted-foreground"}`}>EN</span>
             </div>
             <ThemeToggle />
             <Link href="/login">
-              <Button variant="ghost" size="sm" className="h-8 px-2 text-xs">{t.loginBtn}</Button>
+              <Button variant="ghost" size="sm" className="h-7 px-2 text-[11px]">{t.loginBtn}</Button>
             </Link>
             <Link href="/signup">
-              <Button size="sm" className="h-8 px-2 text-xs">{t.signupBtn}</Button>
+              <Button size="sm" className="h-7 px-2 text-[11px]">{t.signupBtn}</Button>
             </Link>
           </div>
         </div>
