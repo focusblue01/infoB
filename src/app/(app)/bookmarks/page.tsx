@@ -28,12 +28,12 @@ export default function BookmarksPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold">{t.bookmarks}</h1>
+      <h1 className="text-2xl font-bold max-md:px-3">{t.bookmarks}</h1>
 
       {loading ? (
         <div className="space-y-4">{[1, 2].map((i) => <div key={i} className="h-32 bg-muted animate-pulse rounded-lg" />)}</div>
       ) : bookmarks.length === 0 ? (
-        <div className="text-center py-20 space-y-4">
+        <div className="text-center py-20 space-y-4 max-md:px-3">
           <Bookmark className="h-12 w-12 mx-auto text-muted-foreground/50" />
           <p className="text-muted-foreground">{t.noBookmarks}</p>
         </div>
