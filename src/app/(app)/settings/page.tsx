@@ -23,6 +23,8 @@ export default function SettingsPage() {
   const { t } = useLanguage();
   const role = useUserRole();
   const { percent: fontPercent, setPercent: setFontPercent } = useFontSize();
+  const [pendingFontPercent, setPendingFontPercent] = useState(fontPercent);
+  useEffect(() => { setPendingFontPercent(fontPercent); }, [fontPercent]);
   const emailNotifEnabled = canUseEmailNotification(role);
   const keywordsEnabled = canUseKeywords(role);
   const rssEnabled = canUseRss(role);
@@ -149,7 +151,7 @@ export default function SettingsPage() {
           <div className="flex items-center gap-4">
             <div
               className="flex h-16 w-16 shrink-0 items-center justify-center rounded-md border bg-muted/30 font-semibold leading-none"
-              style={{ fontSize: `${Math.max(14, fontPercent * 0.32)}px` }}
+              style={{ fontSize: `${Math.max(14, pendingFontPercent * 0.32)}px` }}
               aria-hidden
             >
               A
@@ -160,16 +162,24 @@ export default function SettingsPage() {
                 min={FONT_SIZE_MIN}
                 max={FONT_SIZE_MAX}
                 step={FONT_SIZE_STEP}
-                value={fontPercent}
-                onChange={(e) => setFontPercent(Number(e.target.value))}
+                value={pendingFontPercent}
+                onChange={(e) => setPendingFontPercent(Number(e.target.value))}
                 className="w-full accent-primary"
               />
               <div className="flex justify-between text-xs text-muted-foreground">
                 <span>{FONT_SIZE_MIN}%</span>
-                <span className="font-medium text-foreground">{fontPercent}%</span>
+                <span className="font-medium text-foreground">{pendingFontPercent}%</span>
                 <span>{FONT_SIZE_MAX}%</span>
               </div>
             </div>
+            <Button
+              type="button"
+              size="sm"
+              onClick={() => setFontPercent(pendingFontPercent)}
+              disabled={pendingFontPercent === fontPercent}
+            >
+              {t.apply}
+            </Button>
           </div>
         </CardContent>
       </Card>
