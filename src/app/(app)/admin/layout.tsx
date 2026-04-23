@@ -16,9 +16,9 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   if (profile?.role !== "A") redirect("/feed");
 
   return (
-    <div className="flex min-h-[calc(100vh-3.5rem)] gap-6">
+    <div className="flex flex-col md:flex-row min-h-[calc(100vh-3.5rem)] gap-3 md:gap-6">
       <AdminSidebar />
-      <main className="flex-1 min-w-0 pt-2">{children}</main>
+      <main className="flex-1 min-w-0 md:pt-2">{children}</main>
     </div>
   );
 }

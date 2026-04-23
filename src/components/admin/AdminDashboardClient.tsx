@@ -24,7 +24,7 @@ export function AdminDashboardClient({ rssCount, userCount, groupCount, articleC
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold">{t.adminDashboard}</h1>
+      <h1 className="text-xl md:text-2xl font-bold">{t.adminDashboard}</h1>
       <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {stats.map((s) => (
           <Card key={s.label} className={s.href ? "hover:shadow-md transition-shadow cursor-pointer" : ""}>
