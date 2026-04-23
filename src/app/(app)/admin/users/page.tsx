@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Loader2, Flame } from "lucide-react";
 import type { UserRole } from "@/types";
 
@@ -100,24 +99,19 @@ export default function AdminUsersPage() {
               </div>
               <div className="flex items-center gap-2 shrink-0">
                 <Badge className={ROLE_COLORS[user.role]}>{ROLE_LABELS[user.role]}</Badge>
-                <Select
-                  value={user.role}
-                  onValueChange={(v) => updateRole(user.id, v as UserRole)}
-                  disabled={saving === user.id}
-                >
-                  <SelectTrigger className="w-28 h-8 text-xs">
-                    {saving === user.id ? (
-                      <Loader2 className="h-3 w-3 animate-spin" />
-                    ) : (
-                      <SelectValue />
-                    )}
-                  </SelectTrigger>
-                  <SelectContent>
+                {saving === user.id ? (
+                  <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                ) : (
+                  <select
+                    value={user.role}
+                    onChange={(e) => updateRole(user.id, e.target.value as UserRole)}
+                    className="h-8 w-28 rounded-md border border-input bg-background px-2 text-xs"
+                  >
                     {(Object.entries(ROLE_LABELS) as [UserRole, string][]).map(([role, label]) => (
-                      <SelectItem key={role} value={role}>{label}</SelectItem>
+                      <option key={role} value={role}>{label}</option>
                     ))}
-                  </SelectContent>
-                </Select>
+                  </select>
+                )}
               </div>
             </div>
           ))}

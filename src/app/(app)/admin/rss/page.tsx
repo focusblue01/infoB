@@ -5,7 +5,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Trash2, Plus, Loader2 } from "lucide-react";
 import { CATEGORY_LABELS, type NewsCategory } from "@/types";
 
@@ -95,17 +94,16 @@ export default function AdminRssPage() {
           <Input placeholder="RSS URL" value={form.url} onChange={(e) => setForm((f) => ({ ...f, url: e.target.value }))} />
         </div>
         <div className="flex gap-2">
-          <Select value={form.category} onValueChange={(v) => setForm((f) => ({ ...f, category: v === "none" ? "" : v }))}>
-            <SelectTrigger className="w-44">
-              <SelectValue placeholder="Category (optional)" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="none">No category</SelectItem>
-              {CATEGORIES.map(([key, label]) => (
-                <SelectItem key={key} value={key}>{label}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <select
+            value={form.category}
+            onChange={(e) => setForm((f) => ({ ...f, category: e.target.value }))}
+            className="h-10 w-44 rounded-md border border-input bg-background px-3 text-sm"
+          >
+            <option value="">No category</option>
+            {CATEGORIES.map(([key, label]) => (
+              <option key={key} value={key}>{label}</option>
+            ))}
+          </select>
           <Input
             type="number"
             placeholder="Priority"
