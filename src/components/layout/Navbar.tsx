@@ -6,16 +6,17 @@ import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { ThemeToggle } from "@/components/common/ThemeToggle";
-import { Newspaper, Bookmark, Settings, LogOut, Menu, X, Flame } from "lucide-react";
+import { Newspaper, Bookmark, Settings, LogOut, Menu, X, Flame, ShieldCheck } from "lucide-react";
 import { useState } from "react";
 import { useLanguage } from "@/lib/language-context";
 
 interface NavbarProps {
   userName?: string | null;
   streakCount?: number;
+  isAdmin?: boolean;
 }
 
-export function Navbar({ userName, streakCount = 0 }: NavbarProps) {
+export function Navbar({ userName, streakCount = 0, isAdmin = false }: NavbarProps) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const router = useRouter();
   const supabase = createClient();
@@ -31,6 +32,7 @@ export function Navbar({ userName, streakCount = 0 }: NavbarProps) {
     { href: "/feed", label: t.navFeed, icon: Newspaper },
     { href: "/bookmarks", label: t.navBookmarks, icon: Bookmark },
     { href: "/settings", label: t.navSettings, icon: Settings },
+    ...(isAdmin ? [{ href: "/admin", label: "Admin", icon: ShieldCheck }] : []),
   ];
 
   return (

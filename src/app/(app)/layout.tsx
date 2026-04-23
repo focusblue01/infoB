@@ -11,7 +11,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("display_name, streak_count, onboarding_completed")
+    .select("display_name, streak_count, onboarding_completed, role")
     .eq("id", user.id)
     .single();
 
@@ -26,6 +26,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         <Navbar
           userName={profile?.display_name}
           streakCount={profile?.streak_count ?? 0}
+          isAdmin={profile?.role === "A"}
         />
         <main className="mx-auto max-w-5xl px-4 py-6">
           {children}
