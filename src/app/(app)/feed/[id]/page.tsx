@@ -67,18 +67,24 @@ export default function SummaryDetailPage() {
     }
   }
 
-  async function toggleBookmark() {
+  function toggleBookmark() {
     if (!data) return;
-    if (data.is_bookmarked) {
-      await fetch(`/api/bookmarks?summary_id=${params.id}`, { method: "DELETE" });
-    } else {
-      await fetch("/api/bookmarks", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ summary_id: params.id }),
-      });
-    }
+    const wasBookmarked = data.is_bookmarked;
     setData((prev: any) => ({ ...prev, is_bookmarked: !prev.is_bookmarked }));
+    const request = wasBookmarked
+      ? fetch(`/api/bookmarks?summary_id=${params.id}`, { method: "DELETE" })
+      : fetch("/api/bookmarks", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ summary_id: params.id }),
+        });
+    request
+      .then((res) => {
+        if (!res.ok) throw new Error("bookmark toggle failed");
+      })
+      .catch(() => {
+        setData((prev: any) => ({ ...prev, is_bookmarked: wasBookmarked }));
+      });
   }
 
   async function handleFeedback(isPositive: boolean) {

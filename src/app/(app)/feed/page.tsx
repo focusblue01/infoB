@@ -129,21 +129,29 @@ export default function FeedPage() {
     setDate(d.toISOString().split("T")[0]);
   }
 
-  async function toggleBookmark(summaryId: string) {
+  function toggleBookmark(summaryId: string) {
     const item = summaries.find((s) => s.id === summaryId);
     if (!item) return;
-    if (item.is_bookmarked) {
-      await fetch(`/api/bookmarks?summary_id=${summaryId}`, { method: "DELETE" });
-    } else {
-      await fetch("/api/bookmarks", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ summary_id: summaryId }),
-      });
-    }
+    const wasBookmarked = item.is_bookmarked;
     setSummaries((prev) =>
       prev.map((s) => s.id === summaryId ? { ...s, is_bookmarked: !s.is_bookmarked } : s)
     );
+    const request = wasBookmarked
+      ? fetch(`/api/bookmarks?summary_id=${summaryId}`, { method: "DELETE" })
+      : fetch("/api/bookmarks", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ summary_id: summaryId }),
+        });
+    request
+      .then((res) => {
+        if (!res.ok) throw new Error("bookmark toggle failed");
+      })
+      .catch(() => {
+        setSummaries((prev) =>
+          prev.map((s) => s.id === summaryId ? { ...s, is_bookmarked: wasBookmarked } : s)
+        );
+      });
   }
 
   const today = getKSTDate();
