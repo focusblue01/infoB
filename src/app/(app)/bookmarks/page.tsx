@@ -34,9 +34,16 @@ export default function BookmarksPage() {
       .finally(() => setLoading(false));
   }, []);
 
-  async function removeBookmark(summaryId: string) {
-    await fetch(`/api/bookmarks?summary_id=${summaryId}`, { method: "DELETE" });
+  function removeBookmark(summaryId: string) {
+    const snapshot = bookmarks;
     setBookmarks((prev) => prev.filter((b) => b.summary_id !== summaryId));
+    fetch(`/api/bookmarks?summary_id=${summaryId}`, { method: "DELETE" })
+      .then((res) => {
+        if (!res.ok) throw new Error("bookmark delete failed");
+      })
+      .catch(() => {
+        setBookmarks(snapshot);
+      });
   }
 
   const grouped = useMemo(() => {
