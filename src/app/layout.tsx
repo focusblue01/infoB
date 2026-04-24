@@ -17,7 +17,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           defaultTheme="system"
           enableSystem
           disableTransitionOnChange
-          themes={["light", "dark", "cloudy-night", "gloomy", "rainy", "leaf"]}
+          themes={["light", "dark", "cloudy-night", "gloomy", "rainy", "leaf", "sunny"]}
         >
           <FontSizeProvider>{children}</FontSizeProvider>
         </ThemeProvider>

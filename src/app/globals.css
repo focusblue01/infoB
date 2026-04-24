@@ -107,6 +107,27 @@
     --ring: 220 15% 55%;
   }
 
+  /* Sunny — 햇살 (Warm Yellow) */
+  .sunny {
+    --background: 45 95% 95%;
+    --foreground: 35 55% 18%;
+    --card: 48 100% 98%;
+    --card-foreground: 35 55% 18%;
+    --primary: 38 92% 50%;
+    --primary-foreground: 40 60% 10%;
+    --secondary: 45 85% 85%;
+    --secondary-foreground: 35 55% 18%;
+    --muted: 45 80% 90%;
+    --muted-foreground: 35 30% 38%;
+    --accent: 45 85% 85%;
+    --accent-foreground: 35 55% 18%;
+    --destructive: 0 72% 50%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 42 70% 78%;
+    --input: 42 70% 78%;
+    --ring: 38 92% 55%;
+  }
+
   /* Leaf — 새싹 (Vibrant Green) */
   .leaf {
     --background: 100 35% 96%;
