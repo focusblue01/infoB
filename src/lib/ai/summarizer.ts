@@ -129,9 +129,12 @@ function parseSummaryResponse(text: string): { title: string; content: string } 
 export async function generateSummaries(): Promise<SummaryResult[]> {
   const supabase = createAdminClient();
   const today = getKSTDateString();
-  const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-  // 브리핑은 최근 36시간 이내 발행된 기사만 참조 (오래된 기사 혼입 방지)
-  const recentPublishedCutoff = new Date(Date.now() - 36 * 60 * 60 * 1000).toISOString();
+  // 브리핑 참조 기준: 조회일 기준 전일(KST) 00:00 부터만 허용 (엄격 제한)
+  // 예: 오늘이 KST 2026-04-24 이면 기사 published_at >= 2026-04-23T00:00:00+09:00 (= 2026-04-22T15:00:00Z)
+  const [kstYyyy, kstMm, kstDd] = today.split("-").map(Number);
+  const briefingCutoff = new Date(Date.UTC(kstYyyy, kstMm - 1, kstDd - 1, -9, 0, 0)).toISOString();
+  // collected_at 도 같은 기준으로 제한
+  const collectedCutoff = briefingCutoff;
 
   // 활성 그룹 + 오늘 생성분 병렬 조회 (기사는 그룹별 직접 조회로 변경)
   const [groupsRes, existingRes] = await Promise.all([
@@ -163,8 +166,8 @@ export async function generateSummaries(): Promise<SummaryResult[]> {
           .from("articles")
           .select("*")
           .eq("category", group.group_key)
-          .gte("collected_at", yesterday)
-          .gte("published_at", recentPublishedCutoff)
+          .gte("collected_at", collectedCutoff)
+          .gte("published_at", briefingCutoff)
           .order("published_at", { ascending: false })
           .order("is_major", { ascending: false })
           .limit(30);
@@ -173,8 +176,8 @@ export async function generateSummaries(): Promise<SummaryResult[]> {
           .from("articles")
           .select("*")
           .contains("matched_keywords", [group.group_key])
-          .gte("collected_at", yesterday)
-          .gte("published_at", recentPublishedCutoff)
+          .gte("collected_at", collectedCutoff)
+          .gte("published_at", briefingCutoff)
           .order("published_at", { ascending: false })
           .order("is_major", { ascending: false })
           .limit(30);
@@ -188,13 +191,24 @@ export async function generateSummaries(): Promise<SummaryResult[]> {
         const idx = PRIORITY_SOURCES.findIndex((p) => sourceName.startsWith(p));
         return idx === -1 ? PRIORITY_SOURCES.length : idx;
       };
+      const toKstDay = (iso: string | null): string => {
+        if (!iso) return "";
+        const d = new Date(iso);
+        return new Date(d.getTime() + 9 * 60 * 60 * 1000).toISOString().slice(0, 10);
+      };
       const matched = fetched
         ? [...fetched].sort((a, b) => {
+            // 1순위: 발행일(KST 기준) 최신 우선 — 날짜 역전 방지
+            const dayA = toKstDay(a.published_at);
+            const dayB = toKstDay(b.published_at);
+            if (dayA !== dayB) return dayB.localeCompare(dayA);
+            // 2순위: is_major 우선
+            if (a.is_major !== b.is_major) return (b.is_major ? 1 : 0) - (a.is_major ? 1 : 0);
+            // 3순위: 우선 소스(연합뉴스 계열)
             const pa = getPriority(a.source_name ?? "");
             const pb = getPriority(b.source_name ?? "");
             if (pa !== pb) return pa - pb;
-            if (a.is_major !== b.is_major) return (b.is_major ? 1 : 0) - (a.is_major ? 1 : 0);
-            // 최신 발행 기사 우선 (날짜 역전 방지)
+            // 4순위: 동일 날짜 내 최신 timestamp
             return new Date(b.published_at ?? 0).getTime() - new Date(a.published_at ?? 0).getTime();
           }).slice(0, 12)
         : null;
