@@ -2,15 +2,16 @@
 
 import { useTheme } from "next-themes";
 import { Button } from "@/components/ui/button";
-import { Sun, Moon, Cloud, CloudRain, Sprout } from "lucide-react";
+import { Sun, Moon, CloudMoon, Cloud, CloudRain, Sprout } from "lucide-react";
 import { useEffect, useState } from "react";
 
-const THEMES = ["light", "dark", "gloomy", "rainy", "leaf"] as const;
+const THEMES = ["light", "dark", "cloudy-night", "gloomy", "rainy", "leaf"] as const;
 type ThemeName = (typeof THEMES)[number];
 
 const ICONS: Record<ThemeName, typeof Sun> = {
   light: Sun,
   dark: Moon,
+  "cloudy-night": CloudMoon,
   gloomy: Cloud,
   rainy: CloudRain,
   leaf: Sprout,
@@ -19,6 +20,7 @@ const ICONS: Record<ThemeName, typeof Sun> = {
 const LABELS: Record<ThemeName, string> = {
   light: "Light",
   dark: "Dark",
+  "cloudy-night": "Cloudy Night",
   gloomy: "Gloomy",
   rainy: "Rainy",
   leaf: "Leaf",
