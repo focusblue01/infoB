@@ -130,6 +130,8 @@ export async function generateSummaries(): Promise<SummaryResult[]> {
   const supabase = createAdminClient();
   const today = getKSTDateString();
   const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+  // 브리핑은 최근 36시간 이내 발행된 기사만 참조 (오래된 기사 혼입 방지)
+  const recentPublishedCutoff = new Date(Date.now() - 36 * 60 * 60 * 1000).toISOString();
 
   // 활성 그룹 + 오늘 생성분 병렬 조회 (기사는 그룹별 직접 조회로 변경)
   const [groupsRes, existingRes] = await Promise.all([
@@ -162,8 +164,9 @@ export async function generateSummaries(): Promise<SummaryResult[]> {
           .select("*")
           .eq("category", group.group_key)
           .gte("collected_at", yesterday)
-          .order("is_major", { ascending: false })
+          .gte("published_at", recentPublishedCutoff)
           .order("published_at", { ascending: false })
+          .order("is_major", { ascending: false })
           .limit(30);
       } else {
         articlesQuery = supabase
@@ -171,8 +174,9 @@ export async function generateSummaries(): Promise<SummaryResult[]> {
           .select("*")
           .contains("matched_keywords", [group.group_key])
           .gte("collected_at", yesterday)
-          .order("is_major", { ascending: false })
+          .gte("published_at", recentPublishedCutoff)
           .order("published_at", { ascending: false })
+          .order("is_major", { ascending: false })
           .limit(30);
       }
 
@@ -189,7 +193,9 @@ export async function generateSummaries(): Promise<SummaryResult[]> {
             const pa = getPriority(a.source_name ?? "");
             const pb = getPriority(b.source_name ?? "");
             if (pa !== pb) return pa - pb;
-            return (b.is_major ? 1 : 0) - (a.is_major ? 1 : 0);
+            if (a.is_major !== b.is_major) return (b.is_major ? 1 : 0) - (a.is_major ? 1 : 0);
+            // 최신 발행 기사 우선 (날짜 역전 방지)
+            return new Date(b.published_at ?? 0).getTime() - new Date(a.published_at ?? 0).getTime();
           }).slice(0, 12)
         : null;
 
