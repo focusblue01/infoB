@@ -2,20 +2,56 @@
 
 import { useTheme } from "next-themes";
 import { Button } from "@/components/ui/button";
-import { Moon, Sun } from "lucide-react";
+import { Sun, Moon, Cloud, CloudRain, Sprout } from "lucide-react";
+import { useEffect, useState } from "react";
+
+const THEMES = ["light", "dark", "gloomy", "rainy", "leaf"] as const;
+type ThemeName = (typeof THEMES)[number];
+
+const ICONS: Record<ThemeName, typeof Sun> = {
+  light: Sun,
+  dark: Moon,
+  gloomy: Cloud,
+  rainy: CloudRain,
+  leaf: Sprout,
+};
+
+const LABELS: Record<ThemeName, string> = {
+  light: "Light",
+  dark: "Dark",
+  gloomy: "Gloomy",
+  rainy: "Rainy",
+  leaf: "Leaf",
+};
 
 export function ThemeToggle() {
-  const { theme, setTheme } = useTheme();
+  const { theme, resolvedTheme, setTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+
+  const current: ThemeName = (
+    THEMES.includes((theme as ThemeName) ?? "light")
+      ? (theme as ThemeName)
+      : ((resolvedTheme as ThemeName) ?? "light")
+  );
+  const Icon = ICONS[current] ?? Sun;
+
+  function cycle() {
+    const idx = THEMES.indexOf(current);
+    const next = THEMES[(idx + 1) % THEMES.length];
+    setTheme(next);
+  }
 
   return (
     <Button
       variant="ghost"
       size="icon"
-      onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+      onClick={cycle}
+      title={mounted ? LABELS[current] : "Theme"}
+      aria-label={mounted ? LABELS[current] : "Theme"}
     >
-      <Sun className="h-5 w-5 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
-      <Moon className="absolute h-5 w-5 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
-      <span className="sr-only">테마 전환</span>
+      <Icon className="h-5 w-5" />
+      <span className="sr-only">Theme: {mounted ? LABELS[current] : ""}</span>
     </Button>
   );
 }
