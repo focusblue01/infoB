@@ -1,13 +1,14 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { getAnthropicClient, getGeminiClient, getProvider } from "@/lib/ai/client";
+import { getAnthropicClient, getGeminiClient, getOpenAIClient, getProvider } from "@/lib/ai/client";
 import { ENGLISH_TRANSLATION_PROMPT } from "@/lib/ai/prompts";
 
 export const maxDuration = 120;
 
 const ANTHROPIC_MODEL = "claude-sonnet-4-6";
 const GEMINI_MODEL = "gemini-flash-lite-latest";
+const OPENAI_MODEL = process.env.OPENAI_MODEL ?? "gpt-4o-mini";
 
 async function translateToEnglish(koreanContent: string): Promise<{ title: string; content: string }> {
   const provider = getProvider();
@@ -21,6 +22,17 @@ async function translateToEnglish(koreanContent: string): Promise<{ title: strin
     });
     const result = await model.generateContent(koreanContent);
     rawText = result.response.text();
+  } else if (provider === "openai") {
+    const client = getOpenAIClient();
+    const response = await client.chat.completions.create({
+      model: OPENAI_MODEL,
+      max_tokens: 1024,
+      messages: [
+        { role: "system", content: ENGLISH_TRANSLATION_PROMPT },
+        { role: "user", content: koreanContent },
+      ],
+    });
+    rawText = response.choices[0]?.message?.content ?? "";
   } else {
     const client = getAnthropicClient();
     const response = await client.messages.create({

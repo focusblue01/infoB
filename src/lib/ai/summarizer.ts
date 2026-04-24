@@ -1,11 +1,12 @@
 import { createAdminClient } from "@/lib/supabase/admin";
-import { getAnthropicClient, getGeminiClient, getProvider } from "./client";
+import { getAnthropicClient, getGeminiClient, getOpenAIClient, getProvider } from "./client";
 import { SYSTEM_PROMPT, ENGLISH_TRANSLATION_PROMPT, PROMPT_VERSION, buildUserPrompt } from "./prompts";
 import { CATEGORY_LABELS, type NewsCategory } from "@/types";
 import { getKSTDateString } from "@/lib/date";
 
 const ANTHROPIC_MODEL = "claude-sonnet-4-6";
 const GEMINI_MODEL = "gemini-flash-lite-latest";
+const OPENAI_MODEL = process.env.OPENAI_MODEL ?? "gpt-4o-mini";
 const MAX_RETRIES = 3;
 
 interface SummaryResult {
@@ -91,6 +92,39 @@ async function callGeminiWithRetry(
   throw new Error("Max retries reached");
 }
 
+async function callOpenAIWithRetry(
+  systemPrompt: string,
+  userPrompt: string,
+  retries = MAX_RETRIES
+): Promise<AIResponse> {
+  const client = getOpenAIClient();
+
+  for (let attempt = 1; attempt <= retries; attempt++) {
+    try {
+      const response = await client.chat.completions.create({
+        model: OPENAI_MODEL,
+        max_tokens: 4096,
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userPrompt },
+        ],
+      });
+      const text = response.choices[0]?.message?.content ?? "";
+      return {
+        content: text,
+        inputTokens: response.usage?.prompt_tokens ?? 0,
+        outputTokens: response.usage?.completion_tokens ?? 0,
+        modelUsed: OPENAI_MODEL,
+      };
+    } catch (error: any) {
+      console.error(`OpenAI API attempt ${attempt}/${retries} failed:`, error.message);
+      if (attempt === retries) throw error;
+      await new Promise((r) => setTimeout(r, 2000 * Math.pow(2, attempt - 1)));
+    }
+  }
+  throw new Error("Max retries reached");
+}
+
 async function callAIWithRetry(
   systemPrompt: string,
   userPrompt: string
@@ -98,6 +132,9 @@ async function callAIWithRetry(
   const provider = getProvider();
   if (provider === "gemini") {
     return callGeminiWithRetry(systemPrompt, userPrompt);
+  }
+  if (provider === "openai") {
+    return callOpenAIWithRetry(systemPrompt, userPrompt);
   }
   return callAnthropicWithRetry(systemPrompt, userPrompt);
 }
