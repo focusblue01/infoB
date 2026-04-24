@@ -46,3 +46,23 @@ export async function PATCH(request: Request) {
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({ profile: data });
 }
+
+export async function DELETE(request: Request) {
+  const auth = await requireAdmin();
+  if ("error" in auth) return auth.error;
+  const { supabase, user } = auth;
+
+  const { searchParams } = new URL(request.url);
+  const id = searchParams.get("id");
+  if (!id) return NextResponse.json({ error: "id required" }, { status: 400 });
+  if (id === user.id) return NextResponse.json({ error: "Cannot delete yourself" }, { status: 400 });
+
+  const { error: authErr } = await supabase.auth.admin.deleteUser(id);
+  if (authErr && !/not.*found/i.test(authErr.message)) {
+    return NextResponse.json({ error: authErr.message }, { status: 500 });
+  }
+
+  await supabase.from("profiles").delete().eq("id", id);
+
+  return NextResponse.json({ ok: true });
+}

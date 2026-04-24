@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Flame } from "lucide-react";
+import { Loader2, Flame, Trash2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import type { UserRole } from "@/types";
 import { useLanguage } from "@/lib/language-context";
 
@@ -31,6 +32,7 @@ export default function AdminUsersPage() {
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState<string | null>(null);
 
   useEffect(() => { fetchUsers(); }, []);
 
@@ -52,6 +54,20 @@ export default function AdminUsersPage() {
       setUsers((prev) => prev.map((u) => u.id === id ? { ...u, role } : u));
     }
     setSaving(null);
+  }
+
+  async function deleteUser(user: AdminUser) {
+    const label = user.display_name || user.email || user.id;
+    if (!window.confirm(t.adminDeleteConfirm(label))) return;
+    setDeleting(user.id);
+    const res = await fetch(`/api/admin/users?id=${encodeURIComponent(user.id)}`, { method: "DELETE" });
+    if (res.ok) {
+      setUsers((prev) => prev.filter((u) => u.id !== user.id));
+    } else {
+      const data = await res.json().catch(() => ({}));
+      window.alert(data?.error ?? "Delete failed");
+    }
+    setDeleting(null);
   }
 
   return (
@@ -106,6 +122,21 @@ export default function AdminUsersPage() {
                     ))}
                   </select>
                 )}
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => deleteUser(user)}
+                  disabled={deleting === user.id}
+                  title={t.adminDelete}
+                  aria-label={t.adminDelete}
+                  className="h-8 w-8"
+                >
+                  {deleting === user.id ? (
+                    <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                  ) : (
+                    <Trash2 className="h-4 w-4 text-destructive" />
+                  )}
+                </Button>
               </div>
             </div>
           ))}
