@@ -2,10 +2,10 @@
 
 import { useTheme } from "next-themes";
 import { Button } from "@/components/ui/button";
-import { Sun, Moon, CloudMoon, Cloud, CloudRain, Sprout, Check } from "lucide-react";
+import { Sun, Moon, CloudMoon, Cloud, CloudRain, Sprout, SunMedium, Check } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
-const THEMES = ["light", "dark", "cloudy-night", "gloomy", "rainy", "leaf"] as const;
+const THEMES = ["light", "dark", "cloudy-night", "gloomy", "rainy", "leaf", "sunny"] as const;
 type ThemeName = (typeof THEMES)[number];
 
 const ICONS: Record<ThemeName, typeof Sun> = {
@@ -15,6 +15,7 @@ const ICONS: Record<ThemeName, typeof Sun> = {
   gloomy: Cloud,
   rainy: CloudRain,
   leaf: Sprout,
+  sunny: SunMedium,
 };
 
 const LABELS: Record<ThemeName, string> = {
@@ -24,6 +25,7 @@ const LABELS: Record<ThemeName, string> = {
   gloomy: "Gloomy",
   rainy: "Rainy",
   leaf: "Leaf",
+  sunny: "Sunny",
 };
 
 export function ThemeToggle() {
