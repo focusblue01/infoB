@@ -12,6 +12,7 @@ AI 기반 개인화 뉴스 큐레이션 웹앱. 사용자가 설정한 관심사
 - **플랜별 권한**: Free / Paid-Basic / Paid-Special / Admin / Tester 5개 역할과 기능 차등
 - **다국어(KO/EN)**: 전체 UI 한/영 전환, 브리핑 본문 Claude 온디맨드 번역 및 DB 캐시
 - **접근성 설정**: 설정 페이지에서 글자 크기 슬라이더(50~150%) 조절, localStorage 저장
+- **테마 7종**: Light(전구) / Dark / Cloudy Night(Dark Gray) / Gloomy(Pastel Gray) / Rainy(Glassy Blue) / Leaf(Vibrant Green) / Sunny(Warm Yellow) — 드롭다운 콤보로 선택, next-themes + HSL 커스텀 프로퍼티 기반
 - **관리자 페이지**: 사용자/카테고리/RSS/키워드 관리, 유사 키워드 직접 통합
 
 ## 권한/플랜
@@ -115,6 +116,8 @@ src/
 - **On-demand 번역**: 한국어 원문만 Claude로 생성·저장하고, EN 전환 시 번역 결과를 `title_en`/`content_en` 컬럼에 캐시해 재요청을 방지
 - **Server + Client 권한 이중 검증**: `permissions.ts` 규칙을 UI와 API 양쪽에서 공유, N은 생성 차단, R은 하루 1회(`last_generated_date`) 제한
 - **글자 크기 적용 범위**: FontSizeProvider 를 루트 레이아웃에 두어 랜딩까지 반영, 모바일 상단 네비는 `.nav-scale-lock` 으로 고정 px 로 override 해 UX 안정성 유지
+- **테마 시스템**: `globals.css` 에 테마별 HSL 토큰 세트를 정의하고 next-themes `themes` 배열에 등록, `ThemeToggle` 은 드롭다운 리스트(현재 선택 체크 표시, 바깥 클릭/ESC 로 닫힘)로 구현
+- **브리핑 참조 정렬**: 조회일 기준 전일 KST 00:00 이후 기사로 엄격 제한, 정렬 우선순위는 (1) 발행일(KST) desc (2) is_major desc (3) 연합뉴스 계열 소스 (4) timestamp — 최신 날짜 기사가 우선 참조되도록 보정
 
 ## 문서
 
