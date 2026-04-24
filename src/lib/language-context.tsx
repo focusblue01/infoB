@@ -85,6 +85,9 @@ const T = {
     adminOnboarding: "온보딩 중",
     adminEmailOn: "이메일 ON",
     adminNoItems: "항목 없음",
+    adminDelete: "삭제",
+    adminDeleteConfirm: (name: string) =>
+      `'${name}' 사용자를 삭제하시겠습니까? 계정과 프로필이 영구 삭제됩니다.`,
 
     // Settings page
     settings: "설정",
@@ -241,6 +244,9 @@ const T = {
     adminOnboarding: "Onboarding",
     adminEmailOn: "Email ON",
     adminNoItems: "No items",
+    adminDelete: "Delete",
+    adminDeleteConfirm: (name: string) =>
+      `Delete user '${name}'? The account and profile will be permanently removed.`,
 
     // Settings page
     settings: "Settings",
