@@ -233,7 +233,7 @@ export async function generateSummaries(): Promise<SummaryResult[]> {
         const d = new Date(iso);
         return new Date(d.getTime() + 9 * 60 * 60 * 1000).toISOString().slice(0, 10);
       };
-      const matched = fetched
+      const sorted = fetched
         ? [...fetched].sort((a, b) => {
             // 1순위: 발행일(KST 기준) 최신 우선 — 날짜 역전 방지
             const dayA = toKstDay(a.published_at);
@@ -247,8 +247,36 @@ export async function generateSummaries(): Promise<SummaryResult[]> {
             if (pa !== pb) return pa - pb;
             // 4순위: 동일 날짜 내 최신 timestamp
             return new Date(b.published_at ?? 0).getTime() - new Date(a.published_at ?? 0).getTime();
-          }).slice(0, 12)
+          })
         : null;
+
+      // 소스 다양성 보장: 정렬된 리스트에서 동일 source_name 최대 PER_SOURCE_CAP 개로 제한해
+      // 12건 채운 뒤, 부족하면 캡 무시하고 채워 넣는다.
+      const TOP_N = 12;
+      const PER_SOURCE_CAP = 2;
+      let matched: typeof sorted = null;
+      if (sorted) {
+        const counts = new Map<string, number>();
+        const picked: typeof sorted = [];
+        const remainder: typeof sorted = [];
+        for (const a of sorted) {
+          const key = a.source_name ?? "";
+          const c = counts.get(key) ?? 0;
+          if (picked.length < TOP_N && c < PER_SOURCE_CAP) {
+            picked.push(a);
+            counts.set(key, c + 1);
+          } else {
+            remainder.push(a);
+          }
+        }
+        if (picked.length < TOP_N) {
+          for (const a of remainder) {
+            if (picked.length >= TOP_N) break;
+            picked.push(a);
+          }
+        }
+        matched = picked;
+      }
 
       if (!matched || matched.length < 3) {
         return { groupId: group.id, topic: group.group_key, success: true };

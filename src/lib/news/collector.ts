@@ -4,6 +4,7 @@ import { fetchRssFeed } from "./rss";
 import type { DefaultRssSource } from "./defaultSources";
 import type { RawArticle } from "./types";
 import type { NewsCategory } from "@/types";
+import { inferCategory } from "./categoryKeywords";
 
 // 제목 유사도 비교 (간단한 자카드 유사도)
 function titleSimilarity(a: string, b: string): number {
@@ -146,6 +147,14 @@ export async function collectNews(): Promise<{ collected: number; skipped: numbe
         if (text.includes(kw.toLowerCase())) kwSet.add(kw);
       }
     }
+  }
+
+  // 카테고리 보조 추론: 카테고리가 아직 지정되지 않은 기사에 대해
+  // 제목+요약 텍스트로 NewsCategory 유추 (연관성 약간 상향)
+  for (const a of allArticles) {
+    if (articleCategoryMap.has(a.externalId)) continue;
+    const inferred = inferCategory(`${a.title} ${a.description ?? ""}`);
+    if (inferred) articleCategoryMap.set(a.externalId, inferred);
   }
 
   // 6. 제외 필터 + 중복 제거 (externalId 기준)
