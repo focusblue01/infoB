@@ -1,5 +1,10 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { collectNews } from "@/lib/news/collector";
+import { generateSummaries } from "@/lib/ai/summarizer";
+
+export const maxDuration = 300;
 
 // GET: 사용자 관심사 조회
 export async function GET() {
@@ -68,7 +73,29 @@ export async function POST(request: Request) {
   }
 
   // interest_groups 업데이트 (관심사 그룹 자동 생성/구독자 수 갱신)
-  const adminSupabase = (await import("@/lib/supabase/admin")).createAdminClient();
+  const adminSupabase = createAdminClient();
+
+  // 신규 키워드(유사 키워드 포함 DB 미존재) 식별 — upsert 이전 시점 기준
+  const inputKeywords: string[] = (keywords ?? []) as string[];
+  const lowerInputKeywords = inputKeywords.map((k) => k.toLowerCase());
+  let trulyNewKeywords: string[] = [];
+  if (lowerInputKeywords.length > 0) {
+    const { data: existingKeywordGroups } = await adminSupabase
+      .from("interest_groups")
+      .select("group_key, similar_keywords")
+      .eq("group_type", "keyword");
+
+    const existingSet = new Set<string>();
+    for (const g of existingKeywordGroups ?? []) {
+      if (g.group_key) existingSet.add(String(g.group_key).toLowerCase());
+      for (const s of g.similar_keywords ?? []) {
+        if (s) existingSet.add(String(s).toLowerCase());
+      }
+    }
+    trulyNewKeywords = inputKeywords.filter(
+      (kw) => !existingSet.has(kw.toLowerCase())
+    );
+  }
 
   for (const cat of categories ?? []) {
     await adminSupabase.from("interest_groups").upsert(
@@ -89,7 +116,43 @@ export async function POST(request: Request) {
     .update({ onboarding_completed: true, updated_at: new Date().toISOString() })
     .eq("id", user.id);
 
-  return NextResponse.json({ success: true });
+  // 신규 키워드(DB 첫 등장)에 대해 즉시 브리핑 생성
+  let immediateBriefing: {
+    triggered: boolean;
+    keywords: string[];
+    succeeded?: number;
+    failed?: number;
+    error?: string;
+  } = { triggered: false, keywords: [] };
+
+  if (trulyNewKeywords.length > 0) {
+    immediateBriefing = { triggered: true, keywords: trulyNewKeywords };
+    try {
+      // 1) 신규 키워드의 group_id 조회 (방금 upsert 됨)
+      const { data: newGroups } = await adminSupabase
+        .from("interest_groups")
+        .select("id, group_key")
+        .eq("group_type", "keyword")
+        .in("group_key", trulyNewKeywords);
+
+      const newGroupIds = (newGroups ?? []).map((g: any) => g.id);
+
+      // 2) 새 키워드는 기존 articles 의 matched_keywords 에 포함되지 않을 수 있으므로 수집 먼저 실행
+      await collectNews();
+
+      // 3) 해당 그룹들에 한해 요약 생성
+      if (newGroupIds.length > 0) {
+        const results = await generateSummaries({ onlyGroupIds: newGroupIds });
+        immediateBriefing.succeeded = results.filter((r) => r.success).length;
+        immediateBriefing.failed = results.filter((r) => !r.success).length;
+      }
+    } catch (e: any) {
+      console.error("Immediate briefing for new keywords failed:", e?.message);
+      immediateBriefing.error = e?.message ?? "unknown";
+    }
+  }
+
+  return NextResponse.json({ success: true, immediateBriefing });
 }
 
 // PUT: 관심사 수정
