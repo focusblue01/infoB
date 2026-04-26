@@ -163,7 +163,7 @@ function parseSummaryResponse(text: string): { title: string; content: string } 
   return { title, content };
 }
 
-export async function generateSummaries(): Promise<SummaryResult[]> {
+export async function generateSummaries(opts?: { onlyGroupIds?: string[] }): Promise<SummaryResult[]> {
   const supabase = createAdminClient();
   const today = getKSTDateString();
   // 브리핑 참조 기준: 조회일 기준 전일(KST) 00:00 부터만 허용 (엄격 제한)
@@ -179,13 +179,19 @@ export async function generateSummaries(): Promise<SummaryResult[]> {
     supabase.from("summaries").select("interest_group_id").eq("briefing_date", today),
   ]);
 
-  const groups = groupsRes.data ?? [];
+  const allGroups = groupsRes.data ?? [];
   const existing = existingRes.data ?? [];
+
+  // 특정 그룹 ID 필터 적용 (신규 키워드 즉시 생성 등에 사용)
+  const groups = opts?.onlyGroupIds && opts.onlyGroupIds.length > 0
+    ? allGroups.filter((g: any) => opts.onlyGroupIds!.includes(g.id))
+    : allGroups;
 
   if (!groups.length) return [];
 
   const existingGroupIds = new Set(existing.map((e: any) => e.interest_group_id));
-  const relatedKeywordsAll = groups
+  // related keywords 컨텍스트는 항상 전체 키워드 그룹 기준으로 제공
+  const relatedKeywordsAll = allGroups
     .filter((g: any) => g.group_type === "keyword")
     .map((g: any) => g.group_key);
 
