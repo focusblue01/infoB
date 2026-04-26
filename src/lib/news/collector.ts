@@ -4,7 +4,12 @@ import { fetchRssFeed } from "./rss";
 import type { DefaultRssSource } from "./defaultSources";
 import type { RawArticle } from "./types";
 import type { NewsCategory } from "@/types";
-import { inferCategory } from "./categoryKeywords";
+import {
+  inferCategory,
+  scoreCategories,
+  keywordMatches,
+  CLASSIFICATION_THRESHOLDS,
+} from "./categoryKeywords";
 
 // 제목 유사도 비교 (간단한 자카드 유사도)
 function titleSimilarity(a: string, b: string): number {
@@ -122,9 +127,9 @@ export async function collectNews(): Promise<{ collected: number; skipped: numbe
       }
       const set = articleKeywordMap.get(a.externalId)!;
       for (const kw of a.matchedKeywords) set.add(kw);
-      const text = `${a.title} ${a.description ?? ""}`.toLowerCase();
+      const text = `${a.title} ${a.description ?? ""}`;
       for (const kw of batch) {
-        if (text.includes(kw.toLowerCase())) set.add(kw);
+        if (keywordMatches(text, kw)) set.add(kw);
       }
     }
   }
@@ -138,23 +143,43 @@ export async function collectNews(): Promise<{ collected: number; skipped: numbe
       if (sourceCategory && !articleCategoryMap.has(a.externalId)) {
         articleCategoryMap.set(a.externalId, sourceCategory);
       }
-      const text = `${a.title} ${a.description ?? ""}`.toLowerCase();
+      const text = `${a.title} ${a.description ?? ""}`;
       if (!articleKeywordMap.has(a.externalId)) {
         articleKeywordMap.set(a.externalId, new Set());
       }
       const kwSet = articleKeywordMap.get(a.externalId)!;
       for (const kw of allKeywords) {
-        if (text.includes(kw.toLowerCase())) kwSet.add(kw);
+        if (keywordMatches(text, kw)) kwSet.add(kw);
       }
     }
   }
 
-  // 카테고리 보조 추론: 카테고리가 아직 지정되지 않은 기사에 대해
-  // 제목+요약 텍스트로 NewsCategory 유추 (연관성 약간 상향)
+  // 카테고리 정밀화 (보편 점수 경쟁)
+  //   1) 미지정 기사: inferCategory 결과(점수+마진 통과)로 보충
+  //   2) 지정된 기사: NewsAPI/RSS 가 잘못 라벨링한 경우를 보정.
+  //      대안 카테고리 점수가 STRONG_OVERRIDE_SCORE 이상이고
+  //      현재 카테고리에 대한 매칭 점수가 0 이면 override.
   for (const a of allArticles) {
-    if (articleCategoryMap.has(a.externalId)) continue;
-    const inferred = inferCategory(`${a.title} ${a.description ?? ""}`);
-    if (inferred) articleCategoryMap.set(a.externalId, inferred);
+    const text = `${a.title} ${a.description ?? ""}`;
+    const current = articleCategoryMap.get(a.externalId);
+    if (!current) {
+      const inferred = inferCategory(text);
+      if (inferred) articleCategoryMap.set(a.externalId, inferred);
+      continue;
+    }
+    const scores = scoreCategories(text);
+    const ranked = (Object.entries(scores) as Array<[NewsCategory, number]>)
+      .filter(([, s]) => s > 0)
+      .sort((x, y) => y[1] - x[1]);
+    if (ranked.length === 0) continue;
+    const [topCat, topScore] = ranked[0];
+    if (
+      topCat !== current &&
+      topScore >= CLASSIFICATION_THRESHOLDS.STRONG_OVERRIDE_SCORE &&
+      (scores[current] ?? 0) === 0
+    ) {
+      articleCategoryMap.set(a.externalId, topCat);
+    }
   }
 
   // 6. 제외 필터 + 중복 제거 (externalId 기준)
