@@ -10,6 +10,8 @@ import {
   keywordMatches,
   CLASSIFICATION_THRESHOLDS,
 } from "./categoryKeywords";
+import { classifyArticlesAI } from "@/lib/ai/classifier";
+import { getProvider } from "@/lib/ai/client";
 
 // 제목 유사도 비교 (간단한 자카드 유사도)
 function titleSimilarity(a: string, b: string): number {
@@ -154,11 +156,12 @@ export async function collectNews(): Promise<{ collected: number; skipped: numbe
     }
   }
 
-  // 카테고리 정밀화 (보편 점수 경쟁)
-  //   1) 미지정 기사: inferCategory 결과(점수+마진 통과)로 보충
-  //   2) 지정된 기사: NewsAPI/RSS 가 잘못 라벨링한 경우를 보정.
-  //      대안 카테고리 점수가 STRONG_OVERRIDE_SCORE 이상이고
-  //      현재 카테고리에 대한 매칭 점수가 0 이면 override.
+  // ── 카테고리 정밀화 (3단 파이프라인) ──────────────────────────────
+  // 1) 규칙 기반 inferCategory (점수+마진, 무비용)
+  //    - 미지정 기사: 점수 통과 시 보충
+  //    - 지정된 기사: 잘못 라벨된 경우 강한 override
+  // 2) Stage 1 AI: 1단계로도 미지정 기사를 빠른 LLM 배치 분류 (AI_PROVIDER_1)
+  // 3) Stage 2 AI: 1·2 단계로도 미지정인 기사를 더 정확한 모델로 재시도 (AI_PROVIDER_2)
   for (const a of allArticles) {
     const text = `${a.title} ${a.description ?? ""}`;
     const current = articleCategoryMap.get(a.externalId);
@@ -179,6 +182,51 @@ export async function collectNews(): Promise<{ collected: number; skipped: numbe
       (scores[current] ?? 0) === 0
     ) {
       articleCategoryMap.set(a.externalId, topCat);
+    }
+  }
+
+  // AI 보조 분류 (규칙 기반으로도 카테고리가 결정되지 않은 기사 한정)
+  // 동일 externalId 중복 방지를 위해 set 으로 정리
+  const uncategorizedSeen = new Set<string>();
+  const uncategorizedArticles = allArticles.filter((a) => {
+    if (articleCategoryMap.has(a.externalId)) return false;
+    if (uncategorizedSeen.has(a.externalId)) return false;
+    uncategorizedSeen.add(a.externalId);
+    return true;
+  });
+
+  if (uncategorizedArticles.length > 0) {
+    const inputs = uncategorizedArticles.map((a) => ({
+      id: a.externalId,
+      title: a.title,
+      description: a.description,
+    }));
+
+    // Stage 1: AI_PROVIDER_1 — fast bulk classification
+    try {
+      const stage1 = await classifyArticlesAI(inputs, 1);
+      for (const [id, cat] of stage1) {
+        if (cat) articleCategoryMap.set(id, cat);
+      }
+    } catch (e: any) {
+      console.error("AI classify stage 1 failed:", e?.message);
+    }
+
+    // Stage 2: AI_PROVIDER_2 — refine remaining unknowns (provider 가 다를 때만)
+    if (getProvider(1) !== getProvider(2)) {
+      const stillUnknown = uncategorizedArticles
+        .filter((a) => !articleCategoryMap.has(a.externalId))
+        .map((a) => ({ id: a.externalId, title: a.title, description: a.description }));
+      if (stillUnknown.length > 0) {
+        try {
+          const stage2 = await classifyArticlesAI(stillUnknown, 2);
+          for (const [id, cat] of stage2) {
+            if (cat) articleCategoryMap.set(id, cat);
+          }
+        } catch (e: any) {
+          console.error("AI classify stage 2 failed:", e?.message);
+        }
+      }
     }
   }
 

@@ -6,7 +6,7 @@ import {
   getOpenAIClient,
   getProvider,
   type AIProvider,
-  type AIRole,
+  type AIStage,
 } from "@/lib/ai/client";
 
 export const maxDuration = 60;
@@ -103,21 +103,25 @@ export async function POST() {
     },
   };
 
-  const roles: AIRole[] = ["collection", "briefing"];
-  const resolved: Record<AIRole, AIProvider> = {
-    collection: getProvider("collection"),
-    briefing: getProvider("briefing"),
+  const stages: AIStage[] = [1, 2];
+  const resolved: Record<AIStage, AIProvider> = {
+    1: getProvider(1),
+    2: getProvider(2),
   };
 
   // 동일 provider 면 한 번만 핑하고 재사용
-  const providersToPing = Array.from(new Set(roles.map((r) => resolved[r])));
+  const providersToPing = Array.from(new Set(stages.map((s) => resolved[s])));
   const pingResults = await Promise.all(providersToPing.map((p) => pingProvider(p)));
   const pingMap = new Map(pingResults.map((r) => [r.provider, r]));
 
-  const perRole = roles.map((role) => {
-    const p = resolved[role];
+  const perRole = stages.map((stage) => {
+    const p = resolved[stage];
     const ping = pingMap.get(p)!;
-    return { role, ...ping };
+    const role =
+      stage === 1
+        ? "stage1 (수집:빠른수집 / 브리핑:초안)"
+        : "stage2 (수집:분류 / 브리핑:검수)";
+    return { stage, role, ...ping };
   });
 
   return NextResponse.json({
