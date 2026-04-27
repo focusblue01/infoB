@@ -58,7 +58,7 @@ async function pingOpenAI(): Promise<Omit<ProviderTest, "provider" | "durationMs
   const model = process.env.OPENAI_MODEL ?? "gpt-5-mini";
   const resp = await client.chat.completions.create({
     model,
-    max_tokens: 32,
+    max_completion_tokens: 32,
     messages: [{ role: "user", content: TEST_PROMPT }],
   });
   return {
