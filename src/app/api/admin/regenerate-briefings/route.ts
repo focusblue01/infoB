@@ -5,27 +5,35 @@ import { getKSTDateString } from "@/lib/date";
 
 export const maxDuration = 300;
 
-// 오늘(KST) 자 모든 브리핑(summaries)을 삭제 후 재생성
-export async function POST() {
+function isValidDate(s: string): boolean {
+  return /^\d{4}-\d{2}-\d{2}$/.test(s);
+}
+
+// 지정된 KST 날짜(기본: 오늘) 자 brefings(summaries) 를 모두 삭제 후 재생성
+export async function POST(request: Request) {
   const auth = await requireAdmin();
   if ("error" in auth) return auth.error;
   const { supabase } = auth;
 
+  let date = getKSTDateString();
   try {
-    const today = getKSTDateString();
+    const body = await request.json().catch(() => ({}));
+    if (typeof body?.date === "string" && isValidDate(body.date)) date = body.date;
+  } catch {
+    // ignore
+  }
 
-    // 오늘자 summaries 전체 삭제 (의존 row: bookmarks/feedback 는 FK 가
-    // 없으므로 안전. 만약 향후 FK 가 추가되면 여기서 cascade 처리 필요)
+  try {
     const { error: delErr, count } = await supabase
       .from("summaries")
       .delete({ count: "exact" })
-      .eq("briefing_date", today);
+      .eq("briefing_date", date);
 
     if (delErr) {
       return NextResponse.json({ success: false, error: delErr.message }, { status: 500 });
     }
 
-    const results = await generateSummaries();
+    const results = await generateSummaries({ targetDate: date });
     const succeeded = results.filter((r) => r.success).length;
     const failed = results.filter((r) => !r.success).length;
 
@@ -36,7 +44,7 @@ export async function POST() {
       succeeded,
       failed,
       failures: results.filter((r) => !r.success).map((r) => ({ topic: r.topic, error: r.error })),
-      briefingDate: today,
+      briefingDate: date,
     });
   } catch (e: any) {
     return NextResponse.json({ success: false, error: e?.message ?? "unknown" }, { status: 500 });

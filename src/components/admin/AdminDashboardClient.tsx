@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Database, Users, Tag, Rss, Loader2, RefreshCcw, Sparkles } from "lucide-react";
 import Link from "next/link";
 import { useLanguage } from "@/lib/language-context";
@@ -14,10 +15,18 @@ interface Props {
   articleCount: number;
 }
 
+function getKstTodayYmd(): string {
+  // 현재 시각을 KST 로 환산해 yyyy-mm-dd 반환
+  const now = new Date();
+  const kst = new Date(now.getTime() + 9 * 60 * 60 * 1000);
+  return kst.toISOString().slice(0, 10);
+}
+
 export function AdminDashboardClient({ rssCount, userCount, groupCount, articleCount }: Props) {
   const { t } = useLanguage();
   const [running, setRunning] = useState<null | "collect" | "regenerate">(null);
   const [result, setResult] = useState<string | null>(null);
+  const [date, setDate] = useState<string>(() => getKstTodayYmd());
 
   const stats = [
     { label: t.adminNavRss, value: rssCount, icon: Database, href: "/admin/rss" },
@@ -27,14 +36,20 @@ export function AdminDashboardClient({ rssCount, userCount, groupCount, articleC
   ];
 
   async function recollect() {
-    if (!window.confirm(t.adminRecollectConfirm)) return;
+    if (!window.confirm(t.adminRecollectConfirm(date))) return;
     setRunning("collect");
     setResult(null);
     try {
-      const res = await fetch("/api/admin/recollect", { method: "POST" });
+      const res = await fetch("/api/admin/recollect", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ date }),
+      });
       const data = await res.json();
       if (data.success) {
-        setResult(`✓ collected: ${data.collected ?? 0}, skipped: ${data.skipped ?? 0}`);
+        setResult(
+          `✓ collected: ${data.collected ?? 0}, skipped: ${data.skipped ?? 0}, reclassified: ${data.reclassified ?? 0}`
+        );
       } else {
         setResult(`✗ ${data.error ?? "failed"}`);
       }
@@ -46,15 +61,19 @@ export function AdminDashboardClient({ rssCount, userCount, groupCount, articleC
   }
 
   async function regenerate() {
-    if (!window.confirm(t.adminRegenerateConfirm)) return;
+    if (!window.confirm(t.adminRegenerateConfirm(date))) return;
     setRunning("regenerate");
     setResult(null);
     try {
-      const res = await fetch("/api/admin/regenerate-briefings", { method: "POST" });
+      const res = await fetch("/api/admin/regenerate-briefings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ date }),
+      });
       const data = await res.json();
       if (data.success) {
         setResult(
-          `✓ deleted: ${data.deleted ?? 0}, succeeded: ${data.succeeded ?? 0}, failed: ${data.failed ?? 0}`
+          `✓ ${data.briefingDate} — deleted: ${data.deleted ?? 0}, succeeded: ${data.succeeded ?? 0}, failed: ${data.failed ?? 0}`
         );
       } else {
         setResult(`✗ ${data.error ?? "failed"}`);
@@ -101,12 +120,22 @@ export function AdminDashboardClient({ rssCount, userCount, groupCount, articleC
         <CardHeader>
           <CardTitle className="text-base">{t.adminToolsTitle}</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-3">
-          <div className="flex flex-wrap gap-2">
+        <CardContent className="space-y-4">
+          <div className="flex flex-wrap items-end gap-3">
+            <div className="space-y-1">
+              <label className="text-xs text-muted-foreground">{t.adminTargetDate}</label>
+              <Input
+                type="date"
+                value={date}
+                onChange={(e) => setDate(e.target.value)}
+                disabled={running !== null}
+                className="w-44"
+              />
+            </div>
             <Button
               variant="outline"
               onClick={recollect}
-              disabled={running !== null}
+              disabled={running !== null || !date}
               className="gap-2"
             >
               {running === "collect" ? (
@@ -124,7 +153,7 @@ export function AdminDashboardClient({ rssCount, userCount, groupCount, articleC
             <Button
               variant="outline"
               onClick={regenerate}
-              disabled={running !== null}
+              disabled={running !== null || !date}
               className="gap-2"
             >
               {running === "regenerate" ? (
