@@ -205,9 +205,9 @@ export async function collectNews(): Promise<{ collected: number; skipped: numbe
     // Stage 1: AI_PROVIDER_1 — fast bulk classification
     try {
       const stage1 = await classifyArticlesAI(inputs, 1);
-      for (const [id, cat] of stage1) {
+      stage1.forEach((cat, id) => {
         if (cat) articleCategoryMap.set(id, cat);
-      }
+      });
     } catch (e: any) {
       console.error("AI classify stage 1 failed:", e?.message);
     }
@@ -220,9 +220,9 @@ export async function collectNews(): Promise<{ collected: number; skipped: numbe
       if (stillUnknown.length > 0) {
         try {
           const stage2 = await classifyArticlesAI(stillUnknown, 2);
-          for (const [id, cat] of stage2) {
+          stage2.forEach((cat, id) => {
             if (cat) articleCategoryMap.set(id, cat);
-          }
+          });
         } catch (e: any) {
           console.error("AI classify stage 2 failed:", e?.message);
         }
