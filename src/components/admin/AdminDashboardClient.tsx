@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Database, Users, Tag, Rss, Loader2, RefreshCcw, Sparkles } from "lucide-react";
+import { Database, Users, Tag, Rss, Loader2, RefreshCcw, Sparkles, Plug } from "lucide-react";
 import Link from "next/link";
 import { useLanguage } from "@/lib/language-context";
 
@@ -24,8 +24,9 @@ function getKstTodayYmd(): string {
 
 export function AdminDashboardClient({ rssCount, userCount, groupCount, articleCount }: Props) {
   const { t } = useLanguage();
-  const [running, setRunning] = useState<null | "collect" | "regenerate">(null);
+  const [running, setRunning] = useState<null | "collect" | "regenerate" | "test">(null);
   const [result, setResult] = useState<string | null>(null);
+  const [testReport, setTestReport] = useState<any | null>(null);
   const [date, setDate] = useState<string>(() => getKstTodayYmd());
 
   const stats = [
@@ -50,6 +51,29 @@ export function AdminDashboardClient({ rssCount, userCount, groupCount, articleC
         setResult(
           `✓ collected: ${data.collected ?? 0}, skipped: ${data.skipped ?? 0}, reclassified: ${data.reclassified ?? 0}`
         );
+      } else {
+        setResult(`✗ ${data.error ?? "failed"}`);
+      }
+    } catch (e: any) {
+      setResult(`✗ ${e?.message ?? "failed"}`);
+    } finally {
+      setRunning(null);
+    }
+  }
+
+  async function testProviders() {
+    setRunning("test");
+    setResult(null);
+    setTestReport(null);
+    try {
+      const res = await fetch("/api/admin/test-providers", { method: "POST" });
+      const data = await res.json();
+      setTestReport(data);
+      if (data.success) {
+        const lines = (data.perRole ?? []).map((r: any) =>
+          `${r.role}: ${r.provider} ${r.ok ? "✓" : "✗"} ${r.ok ? `(${r.durationMs}ms)` : `— ${r.error}`}`
+        );
+        setResult(lines.join(" | "));
       } else {
         setResult(`✗ ${data.error ?? "failed"}`);
       }
@@ -168,9 +192,32 @@ export function AdminDashboardClient({ rssCount, userCount, groupCount, articleC
                 </>
               )}
             </Button>
+            <Button
+              variant="outline"
+              onClick={testProviders}
+              disabled={running !== null}
+              className="gap-2"
+            >
+              {running === "test" ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  {t.adminRunningTest}
+                </>
+              ) : (
+                <>
+                  <Plug className="h-4 w-4" />
+                  {t.adminTestProviders}
+                </>
+              )}
+            </Button>
           </div>
           {result && (
             <p className="text-sm text-muted-foreground font-mono break-all">{result}</p>
+          )}
+          {testReport && (
+            <pre className="text-xs bg-muted p-3 rounded overflow-x-auto">
+{JSON.stringify(testReport, null, 2)}
+            </pre>
           )}
         </CardContent>
       </Card>

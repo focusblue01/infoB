@@ -98,6 +98,8 @@ const T = {
     adminRunningRegenerate: "재생성 중...",
     adminToolsTitle: "운영 도구",
     adminTargetDate: "대상 날짜 (KST)",
+    adminTestProviders: "Provider 점검",
+    adminRunningTest: "점검 중...",
 
     // Settings page
     settings: "설정",
@@ -267,6 +269,8 @@ const T = {
     adminRunningRegenerate: "Regenerating...",
     adminToolsTitle: "Operations",
     adminTargetDate: "Target Date (KST)",
+    adminTestProviders: "Test Providers",
+    adminRunningTest: "Testing...",
 
     // Settings page
     settings: "Settings",
