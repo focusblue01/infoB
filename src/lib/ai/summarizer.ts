@@ -6,7 +6,7 @@ import { getKSTDateString } from "@/lib/date";
 
 const ANTHROPIC_MODEL = "claude-sonnet-4-6";
 const GEMINI_MODEL = "gemini-flash-lite-latest";
-const OPENAI_MODEL = process.env.OPENAI_MODEL ?? "gpt-4o-mini";
+const OPENAI_MODEL = process.env.OPENAI_MODEL ?? "gpt-5-mini";
 const MAX_RETRIES = 3;
 
 interface SummaryResult {

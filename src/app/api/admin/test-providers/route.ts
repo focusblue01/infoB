@@ -55,7 +55,7 @@ async function pingGemini(): Promise<Omit<ProviderTest, "provider" | "durationMs
 
 async function pingOpenAI(): Promise<Omit<ProviderTest, "provider" | "durationMs">> {
   const client = getOpenAIClient();
-  const model = process.env.OPENAI_MODEL ?? "gpt-4o-mini";
+  const model = process.env.OPENAI_MODEL ?? "gpt-5-mini";
   const resp = await client.chat.completions.create({
     model,
     max_tokens: 32,
