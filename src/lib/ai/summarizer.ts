@@ -163,9 +163,10 @@ function parseSummaryResponse(text: string): { title: string; content: string } 
   return { title, content };
 }
 
-export async function generateSummaries(opts?: { onlyGroupIds?: string[] }): Promise<SummaryResult[]> {
+export async function generateSummaries(opts?: { onlyGroupIds?: string[]; targetDate?: string }): Promise<SummaryResult[]> {
   const supabase = createAdminClient();
-  const today = getKSTDateString();
+  // targetDate(KST yyyy-mm-dd) 가 주어지면 그 날짜 기준으로 브리핑을 생성한다.
+  const today = opts?.targetDate ?? getKSTDateString();
   // 브리핑 참조 기준: 조회일 기준 전일(KST) 00:00 부터만 허용 (엄격 제한)
   // 예: 오늘이 KST 2026-04-24 이면 기사 published_at >= 2026-04-23T00:00:00+09:00 (= 2026-04-22T15:00:00Z)
   const [kstYyyy, kstMm, kstDd] = today.split("-").map(Number);
