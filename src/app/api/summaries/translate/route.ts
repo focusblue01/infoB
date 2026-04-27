@@ -8,7 +8,7 @@ export const maxDuration = 120;
 
 const ANTHROPIC_MODEL = "claude-sonnet-4-6";
 const GEMINI_MODEL = "gemini-flash-lite-latest";
-const OPENAI_MODEL = process.env.OPENAI_MODEL ?? "gpt-4o-mini";
+const OPENAI_MODEL = process.env.OPENAI_MODEL ?? "gpt-5-mini";
 
 async function translateToEnglish(koreanContent: string): Promise<{ title: string; content: string }> {
   // 번역은 수집 부수 작업 → collection role provider 사용
