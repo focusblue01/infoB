@@ -27,7 +27,7 @@ async function translateToEnglish(koreanContent: string): Promise<{ title: strin
     const client = getOpenAIClient();
     const response = await client.chat.completions.create({
       model: OPENAI_MODEL,
-      max_tokens: 1024,
+      max_completion_tokens: 1024,
       messages: [
         { role: "system", content: ENGLISH_TRANSLATION_PROMPT },
         { role: "user", content: koreanContent },
