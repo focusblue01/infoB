@@ -88,6 +88,13 @@ const T = {
     adminDelete: "삭제",
     adminDeleteConfirm: (name: string) =>
       `'${name}' 사용자를 삭제하시겠습니까? 계정과 프로필이 영구 삭제됩니다.`,
+    adminRecollect: "기사 재수집 / Re-collect Articles",
+    adminRegenerate: "브리핑 재생성 / Re-generate Briefings",
+    adminRecollectConfirm: "전체 RSS/NewsAPI 를 다시 수집합니다. 계속할까요?",
+    adminRegenerateConfirm: "오늘(KST) 자 브리핑을 모두 삭제하고 재생성합니다. 계속할까요?",
+    adminRunningRecollect: "재수집 중...",
+    adminRunningRegenerate: "재생성 중...",
+    adminToolsTitle: "운영 도구 / Operations",
 
     // Settings page
     settings: "설정",
@@ -247,6 +254,13 @@ const T = {
     adminDelete: "Delete",
     adminDeleteConfirm: (name: string) =>
       `Delete user '${name}'? The account and profile will be permanently removed.`,
+    adminRecollect: "기사 재수집 / Re-collect Articles",
+    adminRegenerate: "브리핑 재생성 / Re-generate Briefings",
+    adminRecollectConfirm: "Re-collect all articles from RSS/NewsAPI. Continue?",
+    adminRegenerateConfirm: "Delete and regenerate all briefings for today (KST). Continue?",
+    adminRunningRecollect: "Re-collecting...",
+    adminRunningRegenerate: "Regenerating...",
+    adminToolsTitle: "운영 도구 / Operations",
 
     // Settings page
     settings: "Settings",
