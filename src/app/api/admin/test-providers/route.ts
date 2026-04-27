@@ -116,7 +116,8 @@ export async function POST() {
 
   const perRole = roles.map((role) => {
     const p = resolved[role];
-    return { role, provider: p, ...pingMap.get(p)! };
+    const ping = pingMap.get(p)!;
+    return { role, ...ping };
   });
 
   return NextResponse.json({
