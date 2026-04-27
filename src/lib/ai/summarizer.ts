@@ -1,5 +1,5 @@
 import { createAdminClient } from "@/lib/supabase/admin";
-import { getAnthropicClient, getGeminiClient, getOpenAIClient, getProvider } from "./client";
+import { getAnthropicClient, getGeminiClient, getOpenAIClient, getProvider, type AIRole } from "./client";
 import { SYSTEM_PROMPT, ENGLISH_TRANSLATION_PROMPT, PROMPT_VERSION, buildUserPrompt } from "./prompts";
 import { CATEGORY_LABELS, type NewsCategory } from "@/types";
 import { getKSTDateString } from "@/lib/date";
@@ -127,9 +127,10 @@ async function callOpenAIWithRetry(
 
 async function callAIWithRetry(
   systemPrompt: string,
-  userPrompt: string
+  userPrompt: string,
+  role: AIRole = "briefing"
 ): Promise<AIResponse> {
-  const provider = getProvider();
+  const provider = getProvider(role);
   if (provider === "gemini") {
     return callGeminiWithRetry(systemPrompt, userPrompt);
   }
@@ -310,17 +311,18 @@ export async function generateSummaries(opts?: { onlyGroupIds?: string[]; target
       );
 
       const { content: rawResponse, inputTokens, outputTokens, modelUsed } =
-        await callAIWithRetry(SYSTEM_PROMPT, userPrompt);
+        await callAIWithRetry(SYSTEM_PROMPT, userPrompt, "briefing");
 
       const { title, content } = parseSummaryResponse(rawResponse);
 
-      // 한국어 생성과 동시에 영어 번역 생성
+      // 한국어 생성과 동시에 영어 번역 생성 (수집 측 부수 작업 → collection role)
       let titleEn: string | null = null;
       let contentEn: string | null = null;
       try {
         const { content: rawEn } = await callAIWithRetry(
           ENGLISH_TRANSLATION_PROMPT,
-          `${title || topic}\n\n${content}`
+          `${title || topic}\n\n${content}`,
+          "collection"
         );
         const parsed = parseSummaryResponse(rawEn);
         titleEn = parsed.title || null;

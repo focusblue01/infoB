@@ -11,7 +11,8 @@ const GEMINI_MODEL = "gemini-flash-lite-latest";
 const OPENAI_MODEL = process.env.OPENAI_MODEL ?? "gpt-4o-mini";
 
 async function translateToEnglish(koreanContent: string): Promise<{ title: string; content: string }> {
-  const provider = getProvider();
+  // 번역은 수집 부수 작업 → collection role provider 사용
+  const provider = getProvider("collection");
   let rawText = "";
 
   if (provider === "gemini") {
