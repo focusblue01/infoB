@@ -1,6 +1,6 @@
 import { createAdminClient } from "@/lib/supabase/admin";
-import { getAnthropicClient, getGeminiClient, getOpenAIClient, getProvider, type AIRole } from "./client";
-import { SYSTEM_PROMPT, ENGLISH_TRANSLATION_PROMPT, PROMPT_VERSION, buildUserPrompt } from "./prompts";
+import { getAnthropicClient, getGeminiClient, getOpenAIClient, getProvider, type AIStage } from "./client";
+import { SYSTEM_PROMPT, ENGLISH_TRANSLATION_PROMPT, REVIEW_PROMPT, PROMPT_VERSION, buildUserPrompt } from "./prompts";
 import { CATEGORY_LABELS, type NewsCategory } from "@/types";
 import { getKSTDateString } from "@/lib/date";
 
@@ -125,12 +125,12 @@ async function callOpenAIWithRetry(
   throw new Error("Max retries reached");
 }
 
-async function callAIWithRetry(
+export async function callAIWithRetry(
   systemPrompt: string,
   userPrompt: string,
-  role: AIRole = "briefing"
+  stage: AIStage = 1
 ): Promise<AIResponse> {
-  const provider = getProvider(role);
+  const provider = getProvider(stage);
   if (provider === "gemini") {
     return callGeminiWithRetry(systemPrompt, userPrompt);
   }
@@ -310,19 +310,48 @@ export async function generateSummaries(opts?: { onlyGroupIds?: string[]; target
         relatedKeywords
       );
 
-      const { content: rawResponse, inputTokens, outputTokens, modelUsed } =
-        await callAIWithRetry(SYSTEM_PROMPT, userPrompt, "briefing");
+      // Stage 1: 초안 생성 (AI_PROVIDER_1)
+      const draft = await callAIWithRetry(SYSTEM_PROMPT, userPrompt, 1);
+      const draftParsed = parseSummaryResponse(draft.content);
+      let title = draftParsed.title;
+      let content = draftParsed.content;
+      let totalInputTokens = draft.inputTokens;
+      let totalOutputTokens = draft.outputTokens;
+      let modelUsed = draft.modelUsed;
 
-      const { title, content } = parseSummaryResponse(rawResponse);
+      // Stage 2: 검수/보완 (AI_PROVIDER_2)
+      // 두 stage 가 같은 provider 로 해석되면 검수 패스를 건너뛰어 토큰 절약
+      const draftProvider = getProvider(1);
+      const reviewProvider = getProvider(2);
+      if (reviewProvider !== draftProvider) {
+        try {
+          const reviewInput = `제목: ${title}\n\n${content}`;
+          const reviewed = await callAIWithRetry(REVIEW_PROMPT, reviewInput, 2);
+          const reviewedParsed = parseSummaryResponse(reviewed.content);
+          // 검수 결과가 비정상적으로 짧으면 초안 유지
+          if (reviewedParsed.content && reviewedParsed.content.length >= 600) {
+            if (reviewedParsed.title) title = reviewedParsed.title;
+            content = reviewedParsed.content;
+            totalInputTokens += reviewed.inputTokens;
+            totalOutputTokens += reviewed.outputTokens;
+            modelUsed = `${draft.modelUsed}+${reviewed.modelUsed}`;
+          }
+        } catch (e: any) {
+          console.error(`Review pass failed for ${topic}, using draft:`, e?.message);
+        }
+      }
 
-      // 한국어 생성과 동시에 영어 번역 생성 (수집 측 부수 작업 → collection role)
+      const inputTokens = totalInputTokens;
+      const outputTokens = totalOutputTokens;
+
+      // 영어 번역은 stage 1 (수집측 부수 작업)
       let titleEn: string | null = null;
       let contentEn: string | null = null;
       try {
         const { content: rawEn } = await callAIWithRetry(
           ENGLISH_TRANSLATION_PROMPT,
           `${title || topic}\n\n${content}`,
-          "collection"
+          1
         );
         const parsed = parseSummaryResponse(rawEn);
         titleEn = parsed.title || null;

@@ -9,16 +9,18 @@ let openaiClient: OpenAI | null = null;
 export type AIProvider = "anthropic" | "gemini" | "openai";
 
 /**
- * 워크로드 역할:
- *  - collection: 기사 수집 부수 작업 (예: 영어 번역, 분류 보조 등)
- *  - briefing : 메인 브리핑(요약) 생성
+ * 두 단계로 워크로드를 분배한다.
+ *  - Stage 1 (AI_PROVIDER_1):
+ *      · 기사 수집 단계의 빠른 1차 분류
+ *      · 브리핑 생성의 초안 생성
+ *  - Stage 2 (AI_PROVIDER_2):
+ *      · 1차 분류로 결정 못한 기사의 카테고리/키워드 분배
+ *      · 브리핑 초안의 검수/보완
  *
- * 환경변수 AI_PROVIDER_1 / AI_PROVIDER_2 로 두 역할의 provider 를 분리할 수 있다.
- *  - 둘 다 유효하게 설정되어 있으면: 역할별로 분리 사용
- *  - 한쪽만 유효하면: 양쪽 역할이 모두 그 한쪽으로 처리됨
- *  - 둘 다 비어 있으면: 레거시 AI_PROVIDER → 그도 없으면 anthropic
+ * 둘 다 유효하면 단계별로 분리, 한쪽만 유효하면 그 쪽이 양쪽 처리.
+ * 모두 비어있으면 레거시 AI_PROVIDER → anthropic 기본값.
  */
-export type AIRole = "collection" | "briefing";
+export type AIStage = 1 | 2;
 
 function normalize(p: string | undefined): AIProvider | null {
   if (!p) return null;
@@ -42,23 +44,19 @@ function resolveCandidate(envName: string): AIProvider | null {
   return isUsable(candidate) ? candidate : null;
 }
 
-export function getProvider(role: AIRole = "briefing"): AIProvider {
-  const primaryEnv = role === "collection" ? "AI_PROVIDER_1" : "AI_PROVIDER_2";
-  const fallbackEnv = role === "collection" ? "AI_PROVIDER_2" : "AI_PROVIDER_1";
+export function getProvider(stage: AIStage = 1): AIProvider {
+  const primaryEnv = stage === 1 ? "AI_PROVIDER_1" : "AI_PROVIDER_2";
+  const fallbackEnv = stage === 1 ? "AI_PROVIDER_2" : "AI_PROVIDER_1";
 
-  // 1) 자기 역할 env 가 유효하면 그것을 사용
   const own = resolveCandidate(primaryEnv);
   if (own) return own;
 
-  // 2) 다른 역할 env 가 유효하면 그것으로 대체 (둘 중 하나만 설정된 경우)
   const other = resolveCandidate(fallbackEnv);
   if (other) return other;
 
-  // 3) 레거시 AI_PROVIDER (이전 버전 호환)
   const legacy = resolveCandidate("AI_PROVIDER");
   if (legacy) return legacy;
 
-  // 4) 기본값: anthropic
   return "anthropic";
 }
 
