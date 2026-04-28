@@ -258,32 +258,69 @@ export async function generateSummaries(opts?: { onlyGroupIds?: string[]; target
           })
         : null;
 
-      // 소스 다양성 보장: 정렬된 리스트에서 동일 source_name 최대 PER_SOURCE_CAP 개로 제한해
-      // 12건 채운 뒤, 부족하면 캡 무시하고 채워 넣는다.
+      // 소스 다양성 + (글로벌 토픽인 경우) 국내/해외 50:50 균형
       const TOP_N = 12;
       const PER_SOURCE_CAP = 2;
-      let matched: typeof sorted = null;
-      if (sorted) {
+
+      // 한글 음절 포함 여부로 국내/해외 소스 판별
+      const HANGUL_RE = /[ㄱ-힝]/;
+      const isDomestic = (a: any) => HANGUL_RE.test(a.source_name ?? "");
+
+      // 글로벌 토픽 여부: category=global 이거나, 키워드가 글로벌 관련 토큰
+      const GLOBAL_KEYWORD_HINTS = [
+        "국제", "세계", "외교", "미국", "중국", "일본", "유럽", "러시아",
+        "우크라이나", "중동", "이스라엘", "팔레스타인", "유엔", "나토",
+        "EU", "G7", "G20", "백악관", "크렘린", "워싱턴", "베이징", "도쿄",
+      ];
+      const isGlobalTopic =
+        (group.group_type === "category" && group.group_key === "global") ||
+        (group.group_type === "keyword" &&
+          GLOBAL_KEYWORD_HINTS.some((h) => (group.group_key as string).includes(h)));
+
+      // per-source cap 적용해 pool 에서 상위 limit 만큼 뽑는 헬퍼
+      const pickWithCap = (pool: any[], limit: number) => {
         const counts = new Map<string, number>();
-        const picked: typeof sorted = [];
-        const remainder: typeof sorted = [];
-        for (const a of sorted) {
+        const picked: any[] = [];
+        const remainder: any[] = [];
+        for (const a of pool) {
           const key = a.source_name ?? "";
           const c = counts.get(key) ?? 0;
-          if (picked.length < TOP_N && c < PER_SOURCE_CAP) {
+          if (picked.length < limit && c < PER_SOURCE_CAP) {
             picked.push(a);
             counts.set(key, c + 1);
           } else {
             remainder.push(a);
           }
         }
-        if (picked.length < TOP_N) {
-          for (const a of remainder) {
-            if (picked.length >= TOP_N) break;
-            picked.push(a);
-          }
+        // 풀이 모자라면 cap 무시하고 채움
+        for (const a of remainder) {
+          if (picked.length >= limit) break;
+          picked.push(a);
         }
-        matched = picked;
+        return picked;
+      };
+
+      let matched: typeof sorted = null;
+      if (sorted) {
+        if (isGlobalTopic) {
+          const half = Math.floor(TOP_N / 2);
+          const domesticPool = sorted.filter(isDomestic);
+          const internationalPool = sorted.filter((a) => !isDomestic(a));
+          const dPicks = pickWithCap(domesticPool, half);
+          const iPicks = pickWithCap(internationalPool, TOP_N - half);
+          // 한쪽이 모자라면 반대쪽으로 보충 (50:50 가능한 한 유지하되 12건 우선)
+          let combined = [...dPicks, ...iPicks];
+          if (combined.length < TOP_N) {
+            const usedIds = new Set(combined.map((a) => a.id));
+            for (const a of sorted) {
+              if (combined.length >= TOP_N) break;
+              if (!usedIds.has(a.id)) combined.push(a);
+            }
+          }
+          matched = combined.slice(0, TOP_N);
+        } else {
+          matched = pickWithCap(sorted, TOP_N).slice(0, TOP_N);
+        }
       }
 
       if (!matched || matched.length < 3) {
