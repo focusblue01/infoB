@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -24,6 +25,7 @@ function getKstTodayYmd(): string {
 
 export function AdminDashboardClient({ rssCount, userCount, groupCount, articleCount }: Props) {
   const { t } = useLanguage();
+  const router = useRouter();
   const [running, setRunning] = useState<null | "collect" | "regenerate" | "test">(null);
   const [result, setResult] = useState<string | null>(null);
   const [testReport, setTestReport] = useState<any | null>(null);
@@ -51,6 +53,7 @@ export function AdminDashboardClient({ rssCount, userCount, groupCount, articleC
         setResult(
           `✓ collected: ${data.collected ?? 0}, skipped: ${data.skipped ?? 0}, reclassified: ${data.reclassified ?? 0}`
         );
+        router.refresh();
       } else {
         setResult(`✗ ${data.error ?? "failed"}`);
       }
@@ -99,6 +102,7 @@ export function AdminDashboardClient({ rssCount, userCount, groupCount, articleC
         setResult(
           `✓ ${data.briefingDate} — deleted: ${data.deleted ?? 0}, succeeded: ${data.succeeded ?? 0}, failed: ${data.failed ?? 0}`
         );
+        router.refresh();
       } else {
         setResult(`✗ ${data.error ?? "failed"}`);
       }
