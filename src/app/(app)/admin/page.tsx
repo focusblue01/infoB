@@ -1,6 +1,10 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { AdminDashboardClient } from "@/components/admin/AdminDashboardClient";
 
+// 카드 카운트가 라우터 캐시로 인해 stale 표기되는 것을 방지
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 export default async function AdminDashboard() {
   const supabase = createAdminClient();
 
