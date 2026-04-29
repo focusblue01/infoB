@@ -74,7 +74,62 @@ technology, economy, politics, society, culture, sports, science, global
 출력은 다음 JSON 한 줄 이외 어떤 텍스트도 포함하지 마라(코드블록·설명 금지):
 {"items":[{"id":"<원본 id>","category":"<technology|economy|politics|society|culture|sports|science|global|unknown>"}]}`;
 
-export const PROMPT_VERSION = "v6-twopass";
+// ──────────────────────────────────────────────────────────────────
+// 트렌드/가쉽 시스템 브리핑 전용 프롬프트
+//   - 입력: 24h 내 커뮤니티(HN/Reddit) 게시글 제목·짧은 description + 클러스터 정보
+//   - 작업: 빈도/언급 시그널을 종합해 "오늘 커뮤니티가 무엇을 보고 있는가" 를 정리
+//   - 분량: 700-900자 (일반 1500자 브리핑보다 짧고 가벼운 톤)
+// ──────────────────────────────────────────────────────────────────
+export const TRENDING_SYSTEM_PROMPT = `너는 국내외 온라인 커뮤니티의 트렌드 큐레이터다.
+입력으로 24시간 내 Hacker News / Reddit 등 커뮤니티에서 화제가 된 게시글 목록이
+주어진다. 각 글에는 소스(예: Reddit r/popular), 제목, 짧은 설명, 그리고 다른
+소스에서도 동일 토픽을 다루는지 여부(clustered) 가 표기된다.
+
+작업:
+1) 가장 자주 언급되거나 여러 소스에 걸쳐 다뤄진 주제·키워드 5-7개 추출.
+2) 각 키워드별로 커뮤니티의 흐름·여론을 2-3문장으로 정리. 추측·과장·근거 없는
+   루머는 배제. 제공된 사실만 활용.
+3) 단발성이지만 흥미로운 화제 글 3-5개를 한 줄씩 짧게 코멘트.
+
+출력 형식 (정확히, 한국어, 700-900자):
+제목: 오늘의 가쉽·트렌드
+
+[오늘의 키워드]
+- 키워드1 (언급 N): 흐름 한 줄 요약
+- 키워드2 (언급 N): ...
+
+[해외 트렌드]
+영어권 커뮤니티(HN/Reddit) 에서 잡힌 흐름을 2-3문장으로.
+
+[국내 화제]
+r/korea, r/hanguk 등에서 한국 관련 화제가 있으면 1-2문장. 없으면 "특별한 한국
+관련 화제 없음" 으로.
+
+[화제의 글]
+- 제목 (소스): 한 줄 코멘트
+- ...
+
+규칙: 한국어 출력. 캐주얼하지만 객관적. 정치 편향·근거 없는 루머 금지. 본문에
+영어 고유명사가 있으면 한국어와 병기 가능 (예: "OpenAI(오픈AI)").`;
+
+// 트렌드 브리핑용 user prompt 빌더 — clustered 표기로 빈도 시그널 전달
+export function buildTrendingUserPrompt(
+  articles: {
+    title: string;
+    description: string | null;
+    sourceName: string;
+    isMajor: boolean;
+  }[]
+): string {
+  const lines = articles.map((a, i) => {
+    const desc = a.description ? a.description.replace(/\s+/g, " ").slice(0, 160) : "";
+    const flag = a.isMajor ? "clustered=true" : "clustered=false";
+    return `${i + 1}. [${a.sourceName}] ${a.title} (${flag})\n   ${desc}`;
+  });
+  return `오늘 커뮤니티 게시글 ${articles.length}건:\n\n${lines.join("\n")}`;
+}
+
+export const PROMPT_VERSION = "v7-trending";
 
 export function buildUserPrompt(
   topic: string,
