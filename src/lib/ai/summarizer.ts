@@ -468,7 +468,7 @@ export async function generateSummaries(opts?: { onlyGroupIds?: string[]; target
         console.error(`English translation failed for ${topic}:`, e.message);
       }
 
-      await supabase.from("summaries").insert({
+      const { error: insertErr } = await supabase.from("summaries").insert({
         interest_group_id: group.id,
         title: title || `${topic} 브리핑`,
         content,
@@ -482,6 +482,16 @@ export async function generateSummaries(opts?: { onlyGroupIds?: string[]; target
         model_used: modelUsed,
         token_count: inputTokens + outputTokens,
       });
+
+      if (insertErr) {
+        console.error(`Summary insert failed for ${group.group_key}:`, insertErr.message);
+        return {
+          groupId: group.id,
+          topic: group.group_key,
+          success: false,
+          error: insertErr.message,
+        };
+      }
 
       return { groupId: group.id, topic: group.group_key, success: true };
     } catch (error: any) {
