@@ -219,10 +219,12 @@ export async function generateSummaries(opts?: { onlyGroupIds?: string[]; target
       let articlesQuery;
       if (isTrendingGroup) {
         // 트렌드/가쉽: 커뮤니티 소스 화이트리스트로 한정
+        // ReadonlyArray 캐스팅 이슈 회피 위해 일반 배열로 spread
+        const trendingNames = [...TRENDING_SOURCE_NAMES];
         articlesQuery = supabase
           .from("articles")
           .select("*")
-          .in("source_name", TRENDING_SOURCE_NAMES as any)
+          .in("source_name", trendingNames)
           .gte("collected_at", collectedCutoff)
           .gte("published_at", briefingCutoff)
           .order("is_major", { ascending: false })
@@ -250,7 +252,12 @@ export async function generateSummaries(opts?: { onlyGroupIds?: string[]; target
           .limit(30);
       }
 
-      const { data: fetched } = await articlesQuery;
+      const { data: fetched, error: fetchErr } = await articlesQuery;
+      if (isTrendingGroup) {
+        console.log(
+          `[trending] group=${group.id} fetched=${fetched?.length ?? "null"} err=${fetchErr?.message ?? "none"} cutoff=${briefingCutoff}`
+        );
+      }
 
       // 연합뉴스/연합인포맥스/연합뉴스TV 우선 정렬 후 상위 12개 선택
       const PRIORITY_SOURCES = ["연합인포맥스", "연합뉴스TV", "연합뉴스"];
@@ -368,7 +375,14 @@ export async function generateSummaries(opts?: { onlyGroupIds?: string[]; target
         }
       }
 
-      if (!matched || matched.length < 3) {
+      // 트렌드는 1건만 있어도 생성, 일반은 3건 이상.
+      const minArticles = isTrendingGroup ? 1 : 3;
+      if (!matched || matched.length < minArticles) {
+        if (isTrendingGroup) {
+          console.warn(
+            `[trending] skipped — matched=${matched?.length ?? "null"} sortedLen=${sorted?.length ?? "null"}`
+          );
+        }
         return { groupId: group.id, topic: group.group_key, success: true };
       }
 
