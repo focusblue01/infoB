@@ -45,7 +45,10 @@ export async function fetchRssFeed(
 
     const articles: RawArticle[] = (feed.items ?? []).map((item) => ({
       externalId: item.guid || item.link || `${sourceName}-${item.title}`,
-      sourceName: feed.title || sourceName,
+      // 피드 자체의 channel.title 이 등록한 이름과 다르게 나오는 경우(예: Reddit
+      // RSS 의 "popular links", HNRSS 의 "Front Page") trending source 필터 등이
+      // 깨지므로 항상 우리가 등록한 이름(rss_sources.name) 으로 통일.
+      sourceName,
       sourceUrl: item.link || null,
       title: item.title || "제목 없음",
       description:
