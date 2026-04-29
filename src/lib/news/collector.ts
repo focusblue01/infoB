@@ -13,7 +13,30 @@ import {
 import { classifyArticlesAI } from "@/lib/ai/classifier";
 import { getProvider } from "@/lib/ai/client";
 
-// 제목 유사도 비교 (간단한 자카드 유사도)
+// 제한된 동시성으로 비동기 작업 처리 (느린 소스 한 곳이 전체 진행을
+// 묶는 현상을 방지하고 소켓 풀 안정화)
+async function mapWithConcurrency<T, R>(
+  items: T[],
+  limit: number,
+  fn: (item: T, index: number) => Promise<R>
+): Promise<R[]> {
+  const results: R[] = new Array(items.length);
+  let next = 0;
+  const workers = Array.from(
+    { length: Math.min(Math.max(limit, 1), items.length) },
+    async () => {
+      while (true) {
+        const i = next++;
+        if (i >= items.length) break;
+        results[i] = await fn(items[i], i);
+      }
+    }
+  );
+  await Promise.all(workers);
+  return results;
+}
+
+// 제목 유사도 비교 (자카드)
 function titleSimilarity(a: string, b: string): number {
   const wordsA = a.toLowerCase().split(/\s+/);
   const wordsB = b.toLowerCase().split(/\s+/);
@@ -24,28 +47,98 @@ function titleSimilarity(a: string, b: string): number {
   return intersection.length / union.size;
 }
 
-// 주요 뉴스 클러스터링: 같은 사건 3건+ → is_major
+// 주요 뉴스 클러스터링 (A-4 + A-5)
+//   - 클러스터링 입력을 최근 24h 발행분으로 한정 (오래된 기사는 어차피
+//     브리핑에 안 쓰임)
+//   - 단어 인덱스 기반 candidate pair 만 Jaccard 검사 → O(N²) 회피.
+//     너무 generic 한 토큰 버킷(>30) 은 skip.
+//   - 연결 컴포넌트(union-find 대신 BFS) 로 클러스터 사이즈 계산
 function markMajorArticles(articles: RawArticle[]): Map<string, boolean> {
   const majorMap = new Map<string, boolean>();
-  const checked = new Set<number>();
+  const cutoffMs = Date.now() - 24 * 60 * 60 * 1000;
 
+  // 24h 이내 후보만 추림
+  const cand: number[] = [];
   for (let i = 0; i < articles.length; i++) {
-    if (checked.has(i)) continue;
-    const cluster = [i];
+    const ts = articles[i].publishedAt
+      ? new Date(articles[i].publishedAt as string).getTime()
+      : NaN;
+    if (Number.isFinite(ts) && ts >= cutoffMs) cand.push(i);
+  }
+  if (cand.length === 0) return majorMap;
 
-    for (let j = i + 1; j < articles.length; j++) {
-      if (checked.has(j)) continue;
-      if (titleSimilarity(articles[i].title, articles[j].title) > 0.4) {
-        cluster.push(j);
-        checked.add(j);
+  // 단어 → 후보 인덱스 매핑 (각 기사 제목의 의미 있는 토큰만)
+  const wordIdx = new Map<string, number[]>();
+  for (const i of cand) {
+    const words = Array.from(
+      new Set(
+        articles[i].title
+          .toLowerCase()
+          .split(/\s+/)
+          .filter((w) => w.length >= 2)
+      )
+    ).slice(0, 6); // 첫 6 토큰만 인덱싱
+    for (const w of words) {
+      let bucket = wordIdx.get(w);
+      if (!bucket) {
+        bucket = [];
+        wordIdx.set(w, bucket);
+      }
+      bucket.push(i);
+    }
+  }
+
+  // 같은 토큰을 공유하는 쌍만 후보로 (generic 단어 버킷은 skip)
+  const pairs = new Set<string>();
+  wordIdx.forEach((idxs) => {
+    if (idxs.length < 2 || idxs.length > 30) return;
+    for (let i = 0; i < idxs.length; i++) {
+      for (let j = i + 1; j < idxs.length; j++) {
+        const a = idxs[i] < idxs[j] ? idxs[i] : idxs[j];
+        const b = idxs[i] < idxs[j] ? idxs[j] : idxs[i];
+        pairs.add(`${a}|${b}`);
       }
     }
+  });
 
-    const isMajor = cluster.length >= 3;
-    for (const idx of cluster) {
-      majorMap.set(articles[idx].externalId, isMajor);
+  // 인접 그래프
+  const adj = new Map<number, Set<number>>();
+  pairs.forEach((p) => {
+    const sep = p.indexOf("|");
+    const a = Number(p.slice(0, sep));
+    const b = Number(p.slice(sep + 1));
+    if (titleSimilarity(articles[a].title, articles[b].title) > 0.4) {
+      let sa = adj.get(a);
+      if (!sa) {
+        sa = new Set();
+        adj.set(a, sa);
+      }
+      sa.add(b);
+      let sb = adj.get(b);
+      if (!sb) {
+        sb = new Set();
+        adj.set(b, sb);
+      }
+      sb.add(a);
     }
-    checked.add(i);
+  });
+
+  // BFS 로 연결 컴포넌트 → 클러스터 사이즈 계산
+  const visited = new Set<number>();
+  for (const start of cand) {
+    if (visited.has(start)) continue;
+    const stack = [start];
+    const cluster: number[] = [];
+    while (stack.length) {
+      const v = stack.pop() as number;
+      if (visited.has(v)) continue;
+      visited.add(v);
+      cluster.push(v);
+      const neighbors = adj.get(v);
+      if (neighbors) neighbors.forEach((n) => { if (!visited.has(n)) stack.push(n); });
+    }
+    const isMajor = cluster.length >= 3;
+    for (const idx of cluster) majorMap.set(articles[idx].externalId, isMajor);
   }
 
   return majorMap;
@@ -109,7 +202,8 @@ export async function collectNews(): Promise<{ collected: number; skipped: numbe
         fetchByKeywords(batch, { pageSize: 50 }).then((arts) => ({ batch, arts }))
       )
     ),
-    Promise.all((rssSources ?? []).map((s: any) => fetchRssFeed(s.url, s.name))),
+    // RSS 는 최대 20 동시 (소켓/도메인 풀 보호 + 느린 소스 격리)
+    mapWithConcurrency(rssSources ?? [], 20, (s: any) => fetchRssFeed(s.url, s.name)),
   ]);
 
   // 카테고리 결과 취합
@@ -185,15 +279,29 @@ export async function collectNews(): Promise<{ collected: number; skipped: numbe
     }
   }
 
-  // AI 보조 분류 (규칙 기반으로도 카테고리가 결정되지 않은 기사 한정)
-  // 동일 externalId 중복 방지를 위해 set 으로 정리
+  // AI 보조 분류 (A-1: 비용/시간 캡)
+  //   - 카테고리 미지정 기사 중에서
+  //   - 최근 24h 발행분만, 발행일 desc 정렬, 상위 200건으로 한정.
+  //   - 24h 밖이거나 200건을 넘는 미지정 기사는 카테고리 NULL 로 두며,
+  //     어차피 브리핑은 24h 이내 카테고리 매칭만 사용하므로 영향 없음.
+  const AI_CLASSIFY_HOURS = 24;
+  const AI_CLASSIFY_MAX = 200;
+  const aiCutoffMs = Date.now() - AI_CLASSIFY_HOURS * 60 * 60 * 1000;
   const uncategorizedSeen = new Set<string>();
-  const uncategorizedArticles = allArticles.filter((a) => {
-    if (articleCategoryMap.has(a.externalId)) return false;
-    if (uncategorizedSeen.has(a.externalId)) return false;
-    uncategorizedSeen.add(a.externalId);
-    return true;
-  });
+  const uncategorizedArticles = allArticles
+    .filter((a) => {
+      if (articleCategoryMap.has(a.externalId)) return false;
+      if (uncategorizedSeen.has(a.externalId)) return false;
+      uncategorizedSeen.add(a.externalId);
+      const ts = a.publishedAt ? new Date(a.publishedAt).getTime() : NaN;
+      return Number.isFinite(ts) && ts >= aiCutoffMs;
+    })
+    .sort((a, b) => {
+      const ta = new Date(a.publishedAt as string).getTime();
+      const tb = new Date(b.publishedAt as string).getTime();
+      return tb - ta;
+    })
+    .slice(0, AI_CLASSIFY_MAX);
 
   if (uncategorizedArticles.length > 0) {
     const inputs = uncategorizedArticles.map((a) => ({

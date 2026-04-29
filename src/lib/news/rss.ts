@@ -1,8 +1,9 @@
 import Parser from "rss-parser";
 import type { RawArticle } from "./types";
 
+// 단일 소스 응답 지연이 전체 수집을 갉아먹는 것을 방지 (10s → 6s)
 const parser = new Parser({
-  timeout: 10000,
+  timeout: 6000,
   headers: { "User-Agent": "DailyNewsDigest/1.0" },
 });
 
