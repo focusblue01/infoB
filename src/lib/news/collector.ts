@@ -10,8 +10,7 @@ import {
   keywordMatches,
   CLASSIFICATION_THRESHOLDS,
 } from "./categoryKeywords";
-import { classifyArticlesAI } from "@/lib/ai/classifier";
-import { getProvider } from "@/lib/ai/client";
+// AI 분류는 별도 경로(/api/cron/classify, classifyRecentUncategorized) 에서 처리
 
 // 제한된 동시성으로 비동기 작업 처리 (느린 소스 한 곳이 전체 진행을
 // 묶는 현상을 방지하고 소켓 풀 안정화)
@@ -164,15 +163,26 @@ export async function collectNews(): Promise<{ collected: number; skipped: numbe
 
   // 3. RSS 소스 조회 (admin rss_sources + 사용자 등록 소스 병합, URL 중복 제거)
   const [{ data: adminSources }, { data: userSources }] = await Promise.all([
-    supabase.from("rss_sources").select("name, url, category, priority").eq("is_active", true),
+    supabase
+      .from("rss_sources")
+      .select("id, name, url, category, priority")
+      .eq("is_active", true),
     supabase.from("user_sources").select("name, url").eq("is_active", true),
   ]);
 
   const userUrls = new Set((userSources ?? []).map((s: any) => s.url));
-  const rssSources: DefaultRssSource[] = [
-    ...(adminSources ?? []).filter((s: any) => !userUrls.has(s.url)).map((s: any) => ({
-      name: s.name, url: s.url, category: s.category ?? undefined, priority: s.priority ?? 10,
-    })),
+  // admin 소스는 id 가 있어 health 업데이트 가능, user 소스는 id 없음
+  type SourceForFetch = DefaultRssSource & { adminId?: string };
+  const rssSources: SourceForFetch[] = [
+    ...(adminSources ?? [])
+      .filter((s: any) => !userUrls.has(s.url))
+      .map((s: any) => ({
+        name: s.name,
+        url: s.url,
+        category: s.category ?? undefined,
+        priority: s.priority ?? 10,
+        adminId: s.id as string,
+      })),
     ...(userSources ?? []).map((s: any) => ({ name: s.name, url: s.url })),
   ];
 
@@ -230,12 +240,36 @@ export async function collectNews(): Promise<{ collected: number; skipped: numbe
     }
   }
 
-  // RSS 결과 취합 + 카테고리 매핑 + 키워드 매핑
+  // RSS 결과 취합 + 카테고리 매핑 + 키워드 매핑 + 소스별 헬스 기록
+  type HealthRow = {
+    id: string;
+    last_fetched_at: string;
+    last_response_ms: number;
+    last_item_count: number;
+    last_error: string | null;
+    success: boolean;
+  };
+  const healthRows: HealthRow[] = [];
+  const nowIso = new Date().toISOString();
+
   for (let i = 0; i < rssResults.length; i++) {
-    const sourceCategory = rssSources[i]?.category as NewsCategory | undefined;
-    for (const a of rssResults[i]) {
+    const src = rssSources[i];
+    const result = rssResults[i];
+    const sourceCategory = src?.category as NewsCategory | undefined;
+
+    if (src?.adminId) {
+      healthRows.push({
+        id: src.adminId,
+        last_fetched_at: nowIso,
+        last_response_ms: result.health.responseMs,
+        last_item_count: result.health.itemCount,
+        last_error: result.health.error,
+        success: result.health.ok,
+      });
+    }
+
+    for (const a of result.articles) {
       allArticles.push(a);
-      // 소스에 카테고리 정의된 경우 기사 카테고리 설정 (category 없는 기사만)
       if (sourceCategory && !articleCategoryMap.has(a.externalId)) {
         articleCategoryMap.set(a.externalId, sourceCategory);
       }
@@ -279,64 +313,57 @@ export async function collectNews(): Promise<{ collected: number; skipped: numbe
     }
   }
 
-  // AI 보조 분류 (A-1: 비용/시간 캡)
-  //   - 카테고리 미지정 기사 중에서
-  //   - 최근 24h 발행분만, 발행일 desc 정렬, 상위 200건으로 한정.
-  //   - 24h 밖이거나 200건을 넘는 미지정 기사는 카테고리 NULL 로 두며,
-  //     어차피 브리핑은 24h 이내 카테고리 매칭만 사용하므로 영향 없음.
-  const AI_CLASSIFY_HOURS = 24;
-  const AI_CLASSIFY_MAX = 200;
-  const aiCutoffMs = Date.now() - AI_CLASSIFY_HOURS * 60 * 60 * 1000;
-  const uncategorizedSeen = new Set<string>();
-  const uncategorizedArticles = allArticles
-    .filter((a) => {
-      if (articleCategoryMap.has(a.externalId)) return false;
-      if (uncategorizedSeen.has(a.externalId)) return false;
-      uncategorizedSeen.add(a.externalId);
-      const ts = a.publishedAt ? new Date(a.publishedAt).getTime() : NaN;
-      return Number.isFinite(ts) && ts >= aiCutoffMs;
-    })
-    .sort((a, b) => {
-      const ta = new Date(a.publishedAt as string).getTime();
-      const tb = new Date(b.publishedAt as string).getTime();
-      return tb - ta;
-    })
-    .slice(0, AI_CLASSIFY_MAX);
+  // 소스 헬스 업데이트 (병렬). 실패는 consecutive_failures 증가만, auto-disable 없음.
+  if (healthRows.length > 0) {
+    const successRows = healthRows.filter((h) => h.success);
+    const failedRows = healthRows.filter((h) => !h.success);
 
-  if (uncategorizedArticles.length > 0) {
-    const inputs = uncategorizedArticles.map((a) => ({
-      id: a.externalId,
-      title: a.title,
-      description: a.description,
-    }));
+    await Promise.all(
+      successRows.map((h) =>
+        supabase
+          .from("rss_sources")
+          .update({
+            last_fetched_at: h.last_fetched_at,
+            last_success_at: h.last_fetched_at,
+            last_response_ms: h.last_response_ms,
+            last_item_count: h.last_item_count,
+            last_error: null,
+            consecutive_failures: 0,
+          })
+          .eq("id", h.id)
+      )
+    );
 
-    // Stage 1: AI_PROVIDER_1 — fast bulk classification
-    try {
-      const stage1 = await classifyArticlesAI(inputs, 1);
-      stage1.forEach((cat, id) => {
-        if (cat) articleCategoryMap.set(id, cat);
-      });
-    } catch (e: any) {
-      console.error("AI classify stage 1 failed:", e?.message);
-    }
-
-    // Stage 2: AI_PROVIDER_2 — refine remaining unknowns (provider 가 다를 때만)
-    if (getProvider(1) !== getProvider(2)) {
-      const stillUnknown = uncategorizedArticles
-        .filter((a) => !articleCategoryMap.has(a.externalId))
-        .map((a) => ({ id: a.externalId, title: a.title, description: a.description }));
-      if (stillUnknown.length > 0) {
-        try {
-          const stage2 = await classifyArticlesAI(stillUnknown, 2);
-          stage2.forEach((cat, id) => {
-            if (cat) articleCategoryMap.set(id, cat);
-          });
-        } catch (e: any) {
-          console.error("AI classify stage 2 failed:", e?.message);
-        }
-      }
+    if (failedRows.length > 0) {
+      const ids = failedRows.map((h) => h.id);
+      const { data: prev } = await supabase
+        .from("rss_sources")
+        .select("id, consecutive_failures")
+        .in("id", ids);
+      const failMap = new Map<string, number>(
+        (prev ?? []).map((r: any) => [r.id, r.consecutive_failures ?? 0])
+      );
+      await Promise.all(
+        failedRows.map((h) =>
+          supabase
+            .from("rss_sources")
+            .update({
+              last_fetched_at: h.last_fetched_at,
+              last_response_ms: h.last_response_ms,
+              last_item_count: h.last_item_count,
+              last_error: h.last_error,
+              consecutive_failures: (failMap.get(h.id) ?? 0) + 1,
+            })
+            .eq("id", h.id)
+        )
+      );
     }
   }
+
+  // ※ AI 보조 분류는 이 함수에서 제거 (B-1).
+  //    /api/cron/classify (cron) 또는 어드민 'AI 분류 실행' 버튼이
+  //    classifyRecentUncategorized() 로 별도 실행한다. 수집 cron 의
+  //    응답 시간을 단축하고 LLM 비용을 분리.
 
   // 6. 제외 필터 + 중복 제거 (externalId 기준)
   const seen = new Set<string>();

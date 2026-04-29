@@ -1,3 +1,4 @@
+import crypto from "crypto";
 import {
   getAnthropicClient,
   getGeminiClient,
@@ -7,6 +8,7 @@ import {
 } from "./client";
 import { CLASSIFY_PROMPT } from "./prompts";
 import type { NewsCategory } from "@/types";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 const ANTHROPIC_MODEL = "claude-sonnet-4-6";
 const GEMINI_MODEL = "gemini-flash-lite-latest";
@@ -94,11 +96,22 @@ async function callRawByProvider(
   return (block as any)?.text ?? "";
 }
 
+function titleHash(title: string): string {
+  return crypto
+    .createHash("sha1")
+    .update(title.trim().toLowerCase())
+    .digest("hex");
+}
+
 /**
  * 기사 목록을 LLM 으로 카테고리 분류한다.
  * - 결과 Map<id, NewsCategory | null>
  * - 'unknown' 또는 잘못된 카테고리는 null 로 매핑
  * - 실패 시 빈 Map 반환 (호출 측에서 graceful fallback)
+ *
+ * 캐시:
+ *   - title sha1 → category 매핑을 ai_classification_cache 에 영구 저장
+ *   - LLM 호출 전 캐시 조회로 중복 분류 회피 (B-4)
  */
 export async function classifyArticlesAI(
   articles: InputArticle[],
@@ -108,8 +121,52 @@ export async function classifyArticlesAI(
   const out = new Map<string, NewsCategory | null>();
   if (articles.length === 0) return out;
 
-  for (let i = 0; i < articles.length; i += batchSize) {
-    const batch = articles.slice(i, i + batchSize);
+  const supabase = createAdminClient();
+
+  // ── 캐시 조회 ────────────────────────────────────────────────
+  const hashByExtId = new Map<string, string>();
+  const hashes = articles.map((a) => {
+    const h = titleHash(a.title);
+    hashByExtId.set(a.id, h);
+    return h;
+  });
+
+  let cachedHashSet: Set<string> = new Set();
+  let cachedCatByHash: Map<string, NewsCategory | null> = new Map();
+  try {
+    const { data: cacheRows } = await supabase
+      .from("ai_classification_cache")
+      .select("title_hash, category")
+      .in("title_hash", Array.from(new Set(hashes)));
+    for (const r of cacheRows ?? []) {
+      cachedHashSet.add(r.title_hash);
+      const c = r.category as string | null;
+      cachedCatByHash.set(
+        r.title_hash,
+        c && VALID_CATEGORIES.includes(c as NewsCategory) ? (c as NewsCategory) : null
+      );
+    }
+  } catch {
+    // 캐시 조회 실패는 graceful — 그냥 계속 진행
+  }
+
+  // 캐시 히트 적용
+  const uncached: InputArticle[] = [];
+  for (const a of articles) {
+    const h = hashByExtId.get(a.id)!;
+    if (cachedHashSet.has(h)) {
+      out.set(a.id, cachedCatByHash.get(h) ?? null);
+    } else {
+      uncached.push(a);
+    }
+  }
+  if (uncached.length === 0) return out;
+
+  // ── LLM 호출 (캐시 미스 만) ──────────────────────────────────
+  const newRows: { title_hash: string; category: NewsCategory | null }[] = [];
+
+  for (let i = 0; i < uncached.length; i += batchSize) {
+    const batch = uncached.slice(i, i + batchSize);
     try {
       const raw = await callRawByProvider(CLASSIFY_PROMPT, buildUserBlock(batch), stage);
       const json = extractJson(raw);
@@ -117,16 +174,33 @@ export async function classifyArticlesAI(
       const items = parsed.items ?? [];
       for (const it of items) {
         const cat = (it.category ?? "").toLowerCase();
-        if (VALID_CATEGORIES.includes(cat as NewsCategory)) {
-          out.set(it.id, cat as NewsCategory);
-        } else {
-          out.set(it.id, null);
-        }
+        const finalCat: NewsCategory | null = VALID_CATEGORIES.includes(cat as NewsCategory)
+          ? (cat as NewsCategory)
+          : null;
+        out.set(it.id, finalCat);
+        const h = hashByExtId.get(it.id);
+        if (h) newRows.push({ title_hash: h, category: finalCat });
       }
     } catch (e: any) {
-      // 배치 실패 → 다음 배치로 계속, 결과는 비워 둠
       console.error(`classifyArticlesAI batch failed (stage ${stage}):`, e?.message);
     }
   }
+
+  // ── 캐시 upsert ──────────────────────────────────────────────
+  if (newRows.length > 0) {
+    try {
+      // 청크 (Supabase upsert 한도 보호)
+      const CHUNK = 500;
+      for (let i = 0; i < newRows.length; i += CHUNK) {
+        const slice = newRows.slice(i, i + CHUNK);
+        await supabase
+          .from("ai_classification_cache")
+          .upsert(slice, { onConflict: "title_hash", ignoreDuplicates: true });
+      }
+    } catch (e: any) {
+      console.error("ai_classification_cache upsert failed:", e?.message);
+    }
+  }
+
   return out;
 }

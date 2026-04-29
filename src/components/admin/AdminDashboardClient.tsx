@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Database, Users, Tag, Rss, Loader2, RefreshCcw, Sparkles, Plug } from "lucide-react";
+import { Database, Users, Tag, Rss, Loader2, RefreshCcw, Sparkles, Plug, Brain } from "lucide-react";
 import Link from "next/link";
 import { useLanguage } from "@/lib/language-context";
 
@@ -26,7 +26,7 @@ function getKstTodayYmd(): string {
 export function AdminDashboardClient({ rssCount, userCount, groupCount, articleCount }: Props) {
   const { t } = useLanguage();
   const router = useRouter();
-  const [running, setRunning] = useState<null | "collect" | "regenerate" | "test">(null);
+  const [running, setRunning] = useState<null | "collect" | "regenerate" | "test" | "classify">(null);
   const [result, setResult] = useState<string | null>(null);
   const [testReport, setTestReport] = useState<any | null>(null);
   const [date, setDate] = useState<string>(() => getKstTodayYmd());
@@ -52,6 +52,27 @@ export function AdminDashboardClient({ rssCount, userCount, groupCount, articleC
       if (data.success) {
         setResult(
           `✓ collected: ${data.collected ?? 0}, skipped: ${data.skipped ?? 0}, reclassified: ${data.reclassified ?? 0}`
+        );
+        router.refresh();
+      } else {
+        setResult(`✗ ${data.error ?? "failed"}`);
+      }
+    } catch (e: any) {
+      setResult(`✗ ${e?.message ?? "failed"}`);
+    } finally {
+      setRunning(null);
+    }
+  }
+
+  async function classifyRecent() {
+    setRunning("classify");
+    setResult(null);
+    try {
+      const res = await fetch("/api/admin/classify-recent", { method: "POST" });
+      const data = await res.json();
+      if (data.success) {
+        setResult(
+          `✓ AI classify — considered: ${data.considered ?? 0}, stage1: ${data.stage1Updated ?? 0}, stage2: ${data.stage2Updated ?? 0}, remaining: ${data.remaining ?? 0} (${data.durationMs ?? 0}ms)`
         );
         router.refresh();
       } else {
@@ -193,6 +214,24 @@ export function AdminDashboardClient({ rssCount, userCount, groupCount, articleC
                 <>
                   <Sparkles className="h-4 w-4" />
                   {t.adminRegenerate}
+                </>
+              )}
+            </Button>
+            <Button
+              variant="outline"
+              onClick={classifyRecent}
+              disabled={running !== null}
+              className="gap-2"
+            >
+              {running === "classify" ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  {t.adminRunningClassify}
+                </>
+              ) : (
+                <>
+                  <Brain className="h-4 w-4" />
+                  {t.adminClassifyRecent}
                 </>
               )}
             </Button>
