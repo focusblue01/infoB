@@ -105,6 +105,8 @@ const T = {
     adminRunningClassify: "분류 중...",
     adminProblemOnly: "문제 소스만 보기",
     adminProblemSources: (n: number) => `문제 소스 ${n}개`,
+    adminToday: "당일",
+    adminTotal: "전체",
 
     // Settings page
     settings: "설정",
@@ -281,6 +283,8 @@ const T = {
     adminRunningClassify: "Classifying...",
     adminProblemOnly: "Problem sources only",
     adminProblemSources: (n: number) => `${n} problem source${n === 1 ? "" : "s"}`,
+    adminToday: "Today",
+    adminTotal: "Total",
 
     // Settings page
     settings: "Settings",

@@ -14,6 +14,7 @@ interface Props {
   userCount: number;
   groupCount: number;
   articleCount: number;
+  articleTodayCount: number;
 }
 
 function getKstTodayYmd(): string {
@@ -23,7 +24,7 @@ function getKstTodayYmd(): string {
   return kst.toISOString().slice(0, 10);
 }
 
-export function AdminDashboardClient({ rssCount, userCount, groupCount, articleCount }: Props) {
+export function AdminDashboardClient({ rssCount, userCount, groupCount, articleCount, articleTodayCount }: Props) {
   const { t } = useLanguage();
   const router = useRouter();
   const [running, setRunning] = useState<null | "collect" | "regenerate" | "test" | "classify">(null);
@@ -31,11 +32,23 @@ export function AdminDashboardClient({ rssCount, userCount, groupCount, articleC
   const [testReport, setTestReport] = useState<any | null>(null);
   const [date, setDate] = useState<string>(() => getKstTodayYmd());
 
-  const stats = [
+  const stats: Array<{
+    label: string;
+    value: number;
+    secondary?: { label: string; value: number };
+    icon: typeof Database;
+    href: string | null;
+  }> = [
     { label: t.adminNavRss, value: rssCount, icon: Database, href: "/admin/rss" },
     { label: t.adminNavUsers, value: userCount, icon: Users, href: "/admin/users" },
     { label: t.adminNavCategories, value: groupCount, icon: Tag, href: "/admin/categories" },
-    { label: "Articles", value: articleCount, icon: Rss, href: null },
+    {
+      label: "Articles",
+      value: articleTodayCount,
+      secondary: { label: t.adminTotal, value: articleCount },
+      icon: Rss,
+      href: null,
+    },
   ];
 
   async function recollect() {
@@ -153,11 +166,25 @@ export function AdminDashboardClient({ rssCount, userCount, groupCount, articleC
             ) : (
               <>
                 <CardHeader className="flex flex-row items-center justify-between pb-2">
-                  <CardTitle className="text-sm font-medium text-muted-foreground">{s.label}</CardTitle>
+                  <CardTitle className="text-sm font-medium text-muted-foreground">
+                    {s.label}
+                    {s.secondary && (
+                      <span className="ml-1 text-xs font-normal">
+                        ({t.adminToday}/{s.secondary.label})
+                      </span>
+                    )}
+                  </CardTitle>
                   <s.icon className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  <p className="text-3xl font-bold">{s.value.toLocaleString()}</p>
+                  <p className="text-3xl font-bold">
+                    {s.value.toLocaleString()}
+                    {s.secondary && (
+                      <span className="text-base font-normal text-muted-foreground ml-1">
+                        / {s.secondary.value.toLocaleString()}
+                      </span>
+                    )}
+                  </p>
                 </CardContent>
               </>
             )}
