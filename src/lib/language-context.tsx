@@ -43,6 +43,7 @@ const T = {
     // Bookmarks
     bookmarks: "북마크",
     noBookmarks: "저장한 브리핑이 없습니다",
+    translating: "번역 중...",
 
     // Generate messages
     generateSuccess: (c: number, s: number) => `✅ 수집 ${c}건 / 브리핑 ${s}개 생성`,
@@ -218,6 +219,7 @@ const T = {
     // Bookmarks
     bookmarks: "Bookmarks",
     noBookmarks: "No saved briefings",
+    translating: "Translating...",
 
     // Generate messages
     generateSuccess: (c: number, s: number) => `✅ Collected ${c} / Generated ${s} briefings`,
