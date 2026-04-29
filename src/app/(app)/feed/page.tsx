@@ -213,22 +213,29 @@ export default function FeedPage() {
         </div>
       ) : (
         <div className="space-y-4">
-          {summaries.map((s) => (
-            <BriefingCard
-              key={s.id}
-              id={s.id}
-              title={s.title}
-              content={s.content}
-              titleEn={s.title_en}
-              contentEn={s.content_en}
-              category={s.category as any}
-              keywords={s.keywords}
-              articleCount={s.article_ids?.length ?? 0}
-              isBookmarked={s.is_bookmarked}
-              onBookmarkToggle={toggleBookmark}
-              showBookmark={bookmarkEnabled}
-            />
-          ))}
+          {/* 트렌드/가쉽 카드는 항상 최상단 고정 */}
+          {[...summaries]
+            .sort((a, b) => {
+              const at = a.category === "trending" ? 0 : 1;
+              const bt = b.category === "trending" ? 0 : 1;
+              return at - bt;
+            })
+            .map((s) => (
+              <BriefingCard
+                key={s.id}
+                id={s.id}
+                title={s.title}
+                content={s.content}
+                titleEn={s.title_en}
+                contentEn={s.content_en}
+                category={s.category as any}
+                keywords={s.keywords}
+                articleCount={s.article_ids?.length ?? 0}
+                isBookmarked={s.is_bookmarked}
+                onBookmarkToggle={toggleBookmark}
+                showBookmark={bookmarkEnabled}
+              />
+            ))}
           {missingGroups.filter((g) => g.type === "keyword").length > 0 && (
             <div className="rounded-lg border border-yellow-200 bg-yellow-50 dark:border-yellow-800 dark:bg-yellow-950/30 px-4 py-3 space-y-2">
               {missingGroups

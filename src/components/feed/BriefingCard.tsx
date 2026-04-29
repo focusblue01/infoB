@@ -2,11 +2,12 @@
 
 import Link from "next/link";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { CategoryBadge } from "@/components/feed/CategoryBadge";
 import { BookmarkButton } from "@/components/summary/BookmarkButton";
 import { truncate } from "@/lib/utils";
 import type { NewsCategory } from "@/types";
-import { FileText } from "lucide-react";
+import { FileText, Flame } from "lucide-react";
 import { useLanguage } from "@/lib/language-context";
 
 interface BriefingCardProps {
@@ -31,14 +32,31 @@ export function BriefingCard({
   const { language, t } = useLanguage();
   const displayTitle = language === "en" && titleEn ? titleEn : title;
   const displayContent = language === "en" && contentEn ? contentEn : content;
+  const isTrending = (category as unknown as string) === "trending";
 
   return (
-    <Card className="group hover:shadow-md transition-shadow">
+    <Card
+      className={
+        isTrending
+          ? "group hover:shadow-md transition-shadow border-orange-300 dark:border-orange-700/60"
+          : "group hover:shadow-md transition-shadow"
+      }
+    >
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between gap-2">
           <div className="space-y-2">
             <div className="flex items-center gap-2 flex-wrap">
-              {category && <CategoryBadge category={category} />}
+              {isTrending ? (
+                <Badge
+                  variant="outline"
+                  className="text-xs gap-1 border-orange-400 text-orange-600 dark:text-orange-400"
+                >
+                  <Flame className="h-3 w-3" />
+                  {t.gossipTrendsLabel}
+                </Badge>
+              ) : (
+                category && <CategoryBadge category={category} />
+              )}
               {keywords.slice(0, 3).map((kw) => (
                 <span key={kw} className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded">
                   {kw}

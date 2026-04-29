@@ -19,18 +19,32 @@ export async function GET(request: Request) {
   const categories = (catRes.data ?? []).map((c: any) => c.category);
   const keywords = (kwRes.data ?? []).map((k: any) => k.keyword);
 
-  // 관심사에 매칭되는 interest_groups 찾기
+  // 관심사에 매칭되는 interest_groups + 시스템(가쉽/트렌드 등) 그룹 union
   const groupKeys = [...categories, ...keywords];
-  if (groupKeys.length === 0) {
-    return NextResponse.json({ summaries: [], date });
+
+  const [userGroupsRes, systemGroupsRes] = await Promise.all([
+    groupKeys.length > 0
+      ? supabase
+          .from("interest_groups")
+          .select("id, group_key, group_type, is_system")
+          .in("group_key", groupKeys)
+      : Promise.resolve({ data: [] as any[] }),
+    supabase
+      .from("interest_groups")
+      .select("id, group_key, group_type, is_system")
+      .eq("is_system", true)
+      .eq("is_active", true),
+  ]);
+
+  const seen = new Set<string>();
+  const groups: any[] = [];
+  for (const g of [...(userGroupsRes.data ?? []), ...(systemGroupsRes.data ?? [])]) {
+    if (seen.has(g.id)) continue;
+    seen.add(g.id);
+    groups.push(g);
   }
 
-  const { data: groups } = await supabase
-    .from("interest_groups")
-    .select("id, group_key, group_type")
-    .in("group_key", groupKeys);
-
-  const groupIds = (groups ?? []).map((g: any) => g.id);
+  const groupIds = groups.map((g) => g.id);
   if (groupIds.length === 0) {
     return NextResponse.json({ summaries: [], date, missingGroups: [] });
   }
@@ -100,8 +114,9 @@ export async function GET(request: Request) {
 
   // 브리핑이 생성된 그룹 ID 집합
   const summaryGroupIds = new Set((summaries ?? []).map((s: any) => s.interest_group_id));
-  const missingGroups = (groups ?? [])
-    .filter((g: any) => !summaryGroupIds.has(g.id))
+  // missingGroups 안내는 사용자 가입 그룹에만 노출 (시스템 그룹은 "내 키워드/카테고리" 가 아님)
+  const missingGroups = groups
+    .filter((g: any) => !summaryGroupIds.has(g.id) && !g.is_system)
     .map((g: any) => ({ key: g.group_key, type: g.group_type }));
 
   return NextResponse.json({ summaries: enriched, date, missingGroups });
