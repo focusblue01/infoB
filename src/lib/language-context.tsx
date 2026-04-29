@@ -100,6 +100,10 @@ const T = {
     adminTargetDate: "대상 날짜 (KST)",
     adminTestProviders: "Provider 점검",
     adminRunningTest: "점검 중...",
+    adminClassifyRecent: "AI 분류 실행",
+    adminRunningClassify: "분류 중...",
+    adminProblemOnly: "문제 소스만 보기",
+    adminProblemSources: (n: number) => `문제 소스 ${n}개`,
 
     // Settings page
     settings: "설정",
@@ -271,6 +275,10 @@ const T = {
     adminTargetDate: "Target Date (KST)",
     adminTestProviders: "Test Providers",
     adminRunningTest: "Testing...",
+    adminClassifyRecent: "Run AI Classify",
+    adminRunningClassify: "Classifying...",
+    adminProblemOnly: "Problem sources only",
+    adminProblemSources: (n: number) => `${n} problem source${n === 1 ? "" : "s"}`,
 
     // Settings page
     settings: "Settings",
