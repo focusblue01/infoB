@@ -213,12 +213,12 @@ export default function FeedPage() {
         </div>
       ) : (
         <div className="space-y-4">
-          {/* 트렌드/가쉽 카드는 항상 최상단 고정 */}
+          {/* 시스템 브리핑 우선 노출: global-policy → trending → 카테고리/관심사 순 */}
           {[...summaries]
             .sort((a, b) => {
-              const at = a.category === "trending" ? 0 : 1;
-              const bt = b.category === "trending" ? 0 : 1;
-              return at - bt;
+              const rank = (c: string | null) =>
+                c === "global-policy" ? 0 : c === "trending" ? 1 : 2;
+              return rank(a.category) - rank(b.category);
             })
             .map((s) => (
               <BriefingCard

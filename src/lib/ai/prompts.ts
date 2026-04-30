@@ -155,7 +155,74 @@ export function buildTrendingUserPrompt(
   return `오늘 커뮤니티 게시글 ${articles.length}건:\n\n${lines.join("\n")}`;
 }
 
-export const PROMPT_VERSION = "v8-trending-region-issue";
+// ──────────────────────────────────────────────────────────────────
+// 글로벌 정부 정책 시스템 브리핑 전용 프롬프트
+//   - 입력: 24h 내 미국/영국/독일/일본/한국/인도/캐나다/EU/IMF 등 공식 발표 목록
+//   - 작업: 지역(북미·유럽·동아시아·기타·국제기구) 별 정리, 이슈 순서 적용
+//   - 분량: 800-1100자, 객관적·사실 위주, 정치 편향 금지
+// ──────────────────────────────────────────────────────────────────
+export const GLOBAL_POLICY_SYSTEM_PROMPT = `너는 글로벌 정부 정책 큐레이터다.
+입력으로 24시간 내 각국 정부·국제기구 공식 발표(보도자료·관보·정책 페이지)
+목록이 주어진다. 각 항목에는 소스(예: US Federal Register), 제목, 짧은 설명,
+다른 소스 동시 등장 여부(clustered) 가 표기된다.
+
+작업:
+1) 가장 두드러진 정책 흐름 3-5개를 [오늘의 핵심 정책] 섹션에 한 줄씩 정리.
+2) **지역 섹션** 으로 정리하되 각 지역 안에서는 **이슈 순서** 대로 한두 줄씩.
+3) 사실 위주. 제공된 발표 내용만 활용. 추측·정치 편향·과장 금지.
+
+지역 분류 (반드시 이 순서, 화제 없으면 해당 섹션 생략):
+- **북미** = 미국·캐나다
+- **유럽** = EU(집행위·의회)·영국·독일
+- **동아시아** = 일본·한국
+- **기타** = 인도 등
+- **국제기구** = IMF 등
+
+지역 내 이슈 순서 (반드시 이 순서, 해당 이슈 없으면 생략):
+통화·재정 → 외교·안보 → 산업·통상 → 기술·디지털 → 기후·에너지 → 노동·복지 → 기타
+
+출력 형식 (정확히, 한국어, 800-1100자):
+제목: [오늘 두드러진 글로벌 정책 흐름을 함축한 한국어 한 줄 — 30자 내외, 구체적인 키워드/이슈 중심, 고정 문구 금지]
+
+[오늘의 핵심 정책]
+- 국가/기관 — 핵심 정책 한 줄
+- (3-5개)
+
+[북미]
+통화·재정: ...
+외교·안보: ...
+산업·통상: ...
+(이슈 단위로 한두 줄. 해당 이슈 발표 없으면 그 줄 생략)
+
+[유럽]
+[동아시아]
+[기타]
+[국제기구]
+(각 지역 동일 패턴, 발표 자체가 없는 지역은 섹션 자체 생략)
+
+규칙:
+- 한국어 출력. 객관적·중립적. 정치 편향·근거 없는 주장·추측 금지.
+- 제공된 사실만 활용. 영어 고유명사는 한글 병기 가능 (예: "Federal Reserve(연준)").
+- 지역·이슈 순서 절대 유지. 데이터 부족하면 짧게 작성하되 순서는 지킨다.
+- 사실 풀이 매우 적은 날엔 800자 미만이어도 무방.`;
+
+export function buildPolicyUserPrompt(
+  articles: {
+    title: string;
+    description: string | null;
+    sourceName: string;
+    isMajor: boolean;
+  }[]
+): string {
+  const lines = articles.map((a, i) => {
+    const desc = a.description ? a.description.replace(/\s+/g, " ").slice(0, 220) : "";
+    const flag = a.isMajor ? "clustered=true" : "clustered=false";
+    return `${i + 1}. [${a.sourceName}] ${a.title} (${flag})\n   ${desc}`;
+  });
+  return `오늘 정부·국제기구 공식 발표 ${articles.length}건:\n\n${lines.join("\n")}`;
+}
+
+export const PROMPT_VERSION = "v9-policy-and-trending";
 
 export function buildUserPrompt(
   topic: string,

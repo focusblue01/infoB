@@ -45,6 +45,7 @@ const T = {
     noBookmarks: "저장한 브리핑이 없습니다",
     translating: "번역 중...",
     gossipTrendsLabel: "가쉽·트렌드",
+    globalPolicyLabel: "글로벌 정부 정책",
 
     // Generate messages
     generateSuccess: (c: number, s: number) => `✅ 수집 ${c}건 / 브리핑 ${s}개 생성`,
@@ -224,6 +225,7 @@ const T = {
     noBookmarks: "No saved briefings",
     translating: "Translating...",
     gossipTrendsLabel: "Gossip & Trends",
+    globalPolicyLabel: "Global Government Policy",
 
     // Generate messages
     generateSuccess: (c: number, s: number) => `✅ Collected ${c} / Generated ${s} briefings`,
