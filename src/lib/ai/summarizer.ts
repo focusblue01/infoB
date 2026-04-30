@@ -5,13 +5,16 @@ import {
   ENGLISH_TRANSLATION_PROMPT,
   REVIEW_PROMPT,
   TRENDING_SYSTEM_PROMPT,
+  GLOBAL_POLICY_SYSTEM_PROMPT,
   PROMPT_VERSION,
   buildUserPrompt,
   buildTrendingUserPrompt,
+  buildPolicyUserPrompt,
 } from "./prompts";
 import { CATEGORY_LABELS, type NewsCategory } from "@/types";
 import { getKSTDateString } from "@/lib/date";
 import { TRENDING_SOURCE_NAMES } from "@/lib/news/trendingSources";
+import { GLOBAL_POLICY_SOURCE_NAMES } from "@/lib/news/policySources";
 
 const ANTHROPIC_MODEL = "claude-sonnet-4-6";
 const GEMINI_MODEL = "gemini-flash-lite-latest";
@@ -214,17 +217,30 @@ export async function generateSummaries(opts?: { onlyGroupIds?: string[]; target
 
     try {
       const isTrendingGroup = group.is_system && group.group_key === "trending";
+      const isPolicyGroup = group.is_system && group.group_key === "global-policy";
+      const isSystemGroup = isTrendingGroup || isPolicyGroup;
 
       // 기사를 그룹별로 DB에서 직접 조회 (전체 로드 후 필터 방식의 limit 문제 제거)
       let articlesQuery;
       if (isTrendingGroup) {
         // 트렌드/가쉽: 커뮤니티 소스 화이트리스트로 한정
-        // ReadonlyArray 캐스팅 이슈 회피 위해 일반 배열로 spread
         const trendingNames = [...TRENDING_SOURCE_NAMES];
         articlesQuery = supabase
           .from("articles")
           .select("*")
           .in("source_name", trendingNames)
+          .gte("collected_at", collectedCutoff)
+          .gte("published_at", briefingCutoff)
+          .order("is_major", { ascending: false })
+          .order("published_at", { ascending: false })
+          .limit(60);
+      } else if (isPolicyGroup) {
+        // 글로벌 정부 정책: 정부·국제기구 공식 발표 화이트리스트로 한정
+        const policyNames = [...GLOBAL_POLICY_SOURCE_NAMES];
+        articlesQuery = supabase
+          .from("articles")
+          .select("*")
+          .in("source_name", policyNames)
           .gte("collected_at", collectedCutoff)
           .gte("published_at", briefingCutoff)
           .order("is_major", { ascending: false })
@@ -253,9 +269,9 @@ export async function generateSummaries(opts?: { onlyGroupIds?: string[]; target
       }
 
       const { data: fetched, error: fetchErr } = await articlesQuery;
-      if (isTrendingGroup) {
+      if (isSystemGroup) {
         console.log(
-          `[trending] group=${group.id} fetched=${fetched?.length ?? "null"} err=${fetchErr?.message ?? "none"} cutoff=${briefingCutoff}`
+          `[system:${group.group_key}] fetched=${fetched?.length ?? "null"} err=${fetchErr?.message ?? "none"} cutoff=${briefingCutoff}`
         );
       }
 
@@ -331,18 +347,17 @@ export async function generateSummaries(opts?: { onlyGroupIds?: string[]; target
 
       let matched: typeof sorted = null;
       if (sorted) {
-        if (isTrendingGroup) {
-          // 트렌드: 더 많은 샘플(24건) 을 LLM 에 넘겨 빈도/테마 추출 정확도 ↑
-          // per-source cap=3 으로 다양성 유지
-          const TRENDING_TOP_N = 24;
-          const TRENDING_CAP = 3;
+        if (isTrendingGroup || isPolicyGroup) {
+          // 시스템 그룹: 더 많은 샘플(24건) + per-source cap=3 으로 다양성 유지
+          const SYS_TOP_N = 24;
+          const SYS_CAP = 3;
           const counts = new Map<string, number>();
           const picked: any[] = [];
           const remainder: any[] = [];
           for (const a of sorted) {
             const key = a.source_name ?? "";
             const c = counts.get(key) ?? 0;
-            if (picked.length < TRENDING_TOP_N && c < TRENDING_CAP) {
+            if (picked.length < SYS_TOP_N && c < SYS_CAP) {
               picked.push(a);
               counts.set(key, c + 1);
             } else {
@@ -350,7 +365,7 @@ export async function generateSummaries(opts?: { onlyGroupIds?: string[]; target
             }
           }
           for (const a of remainder) {
-            if (picked.length >= TRENDING_TOP_N) break;
+            if (picked.length >= SYS_TOP_N) break;
             picked.push(a);
           }
           matched = picked;
@@ -375,28 +390,34 @@ export async function generateSummaries(opts?: { onlyGroupIds?: string[]; target
         }
       }
 
-      // 트렌드는 1건만 있어도 생성, 일반은 3건 이상.
-      const minArticles = isTrendingGroup ? 1 : 3;
+      // 시스템 그룹은 1건만 있어도 생성, 일반은 3건 이상.
+      const minArticles = isSystemGroup ? 1 : 3;
       if (!matched || matched.length < minArticles) {
-        if (isTrendingGroup) {
+        if (isSystemGroup) {
           console.warn(
-            `[trending] skipped — matched=${matched?.length ?? "null"} sortedLen=${sorted?.length ?? "null"}`
+            `[system:${group.group_key}] skipped — matched=${matched?.length ?? "null"} sortedLen=${sorted?.length ?? "null"}`
           );
         }
         return { groupId: group.id, topic: group.group_key, success: true };
       }
 
-      const topic = isTrendingGroup
-        ? "가쉽·트렌드"
-        : group.group_type === "category"
-          ? CATEGORY_LABELS[group.group_key as NewsCategory] ?? group.group_key
-          : group.group_key;
+      const topic = isPolicyGroup
+        ? "글로벌 정부 정책"
+        : isTrendingGroup
+          ? "가쉽·트렌드"
+          : group.group_type === "category"
+            ? CATEGORY_LABELS[group.group_key as NewsCategory] ?? group.group_key
+            : group.group_key;
 
       const relatedKeywords = relatedKeywordsAll.filter((k: string) => k !== group.group_key);
 
-      const systemPromptForGroup = isTrendingGroup ? TRENDING_SYSTEM_PROMPT : SYSTEM_PROMPT;
-      const userPrompt = isTrendingGroup
-        ? buildTrendingUserPrompt(
+      const systemPromptForGroup = isPolicyGroup
+        ? GLOBAL_POLICY_SYSTEM_PROMPT
+        : isTrendingGroup
+          ? TRENDING_SYSTEM_PROMPT
+          : SYSTEM_PROMPT;
+      const userPrompt = isPolicyGroup
+        ? buildPolicyUserPrompt(
             matched.map((a: any) => ({
               title: a.title,
               description: a.description,
@@ -404,18 +425,27 @@ export async function generateSummaries(opts?: { onlyGroupIds?: string[]; target
               isMajor: !!a.is_major,
             }))
           )
-        : buildUserPrompt(
-            topic,
-            matched.map((a: any) => ({
-              title: a.title,
-              description: a.description,
-              content: a.content,
-              relatedKeywords: (a.matched_keywords ?? []).filter(
-                (k: string) => relatedKeywords.includes(k) && k !== group.group_key
-              ),
-            })),
-            relatedKeywords
-          );
+        : isTrendingGroup
+          ? buildTrendingUserPrompt(
+              matched.map((a: any) => ({
+                title: a.title,
+                description: a.description,
+                sourceName: a.source_name ?? "",
+                isMajor: !!a.is_major,
+              }))
+            )
+          : buildUserPrompt(
+              topic,
+              matched.map((a: any) => ({
+                title: a.title,
+                description: a.description,
+                content: a.content,
+                relatedKeywords: (a.matched_keywords ?? []).filter(
+                  (k: string) => relatedKeywords.includes(k) && k !== group.group_key
+                ),
+              })),
+              relatedKeywords
+            );
 
       // Stage 1: 초안 생성 (AI_PROVIDER_1)
       const draft = await callAIWithRetry(systemPromptForGroup, userPrompt, 1);
@@ -430,8 +460,8 @@ export async function generateSummaries(opts?: { onlyGroupIds?: string[]; target
       // 두 stage 가 같은 provider 로 해석되면 검수 패스를 건너뛰어 토큰 절약
       const draftProvider = getProvider(1);
       const reviewProvider = getProvider(2);
-      // 트렌드는 분량이 짧고 톤이 가벼워 검수 패스를 건너뛴다 (토큰 절약)
-      if (!isTrendingGroup && reviewProvider !== draftProvider) {
+      // 시스템 브리핑(트렌드/정책)은 분량이 짧아 검수 패스를 건너뛴다 (토큰 절약)
+      if (!isSystemGroup && reviewProvider !== draftProvider) {
         try {
           const reviewInput = `제목: ${title}\n\n${content}`;
           const reviewed = await callAIWithRetry(REVIEW_PROMPT, reviewInput, 2);
