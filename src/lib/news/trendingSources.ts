@@ -8,6 +8,7 @@
  * `articles.source_name IN (...)` 필터를 사용한다.
  */
 export const TRENDING_SOURCE_NAMES: ReadonlyArray<string> = [
+  // 해외 커뮤니티
   "Hacker News",
   "HNRSS Frontpage",
   "HNRSS High-Score",
@@ -21,4 +22,11 @@ export const TRENDING_SOURCE_NAMES: ReadonlyArray<string> = [
   "Reddit r/television",
   "Reddit r/korea",
   "Reddit r/hanguk",
+  // 한국발 핫이슈 시그널 (공식 RSS)
+  "Google Trends KR Daily",
+  "Google News KR Top",
+  "Google News KR 연예",
+  "Google News KR 스포츠",
+  "인사이트",
+  "위키트리",
 ];
