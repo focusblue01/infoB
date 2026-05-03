@@ -142,6 +142,14 @@ export default function AdminRssPage() {
         </Badge>
       );
     }
+    if ((s.consecutive_failures ?? 0) >= 10) {
+      return (
+        <Badge variant="destructive" className="text-xs gap-1">
+          <AlertTriangle className="h-3 w-3" />
+          skipped · fail × {s.consecutive_failures}
+        </Badge>
+      );
+    }
     if ((s.consecutive_failures ?? 0) >= 1 || s.last_error) {
       return (
         <Badge variant="destructive" className="text-xs gap-1">

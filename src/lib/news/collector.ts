@@ -162,11 +162,15 @@ export async function collectNews(): Promise<{ collected: number; skipped: numbe
   const excludeSet = new Set((excludeKws ?? []).map((k: any) => k.keyword.toLowerCase()));
 
   // 3. RSS 소스 조회 (admin rss_sources + 사용자 등록 소스 병합, URL 중복 제거)
+  //    - 연속 실패가 누적된 소스는 fetcher 단계에서 skip (is_active 는 건드리지 않음)
+  //      → 어드민 페이지에선 그대로 보이고 직접 결정 가능
+  const FAILURE_SKIP_THRESHOLD = 10;
   const [{ data: adminSources }, { data: userSources }] = await Promise.all([
     supabase
       .from("rss_sources")
-      .select("id, name, url, category, priority")
-      .eq("is_active", true),
+      .select("id, name, url, category, priority, consecutive_failures")
+      .eq("is_active", true)
+      .or(`consecutive_failures.is.null,consecutive_failures.lt.${FAILURE_SKIP_THRESHOLD}`),
     supabase.from("user_sources").select("name, url").eq("is_active", true),
   ]);
 
