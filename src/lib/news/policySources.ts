@@ -10,18 +10,20 @@ export const GLOBAL_POLICY_SOURCE_NAMES: ReadonlyArray<string> = [
   // 북미
   "US Federal Register",
   "US Federal Register Significant",
-  "Canada.ca News",
+  "Canada.ca News",      // 비활성 (alt 미확보) — row 보존
+  "PM Canada",           // 캐나다 갭 보강
   // 유럽
   "UK GOV.UK Announcements",
-  "Bundesregierung EN",
+  "Bundesregierung EN",  // 비활성 (alt 미확보)
   "EU Commission Press",
   "European Parliament Press",
   // 동아시아
-  "Japan Kantei",
-  "대한민국 정책브리핑",
-  "KOREA.net Press",
+  "Japan Kantei",        // 비활성 (alt 미확보)
+  "Japan Times Top",     // 일본 갭 보강 (신문사 — 일본 정책 보도 커버)
+  "대한민국 정책브리핑",      // 비활성 (alt 미확보)
+  "KOREA.net Press",     // 비활성 (alt 미확보)
   // 남아시아
   "India PIB Press Releases",
   // 국제기구
-  "IMF News",
+  "IMF News",            // 비활성 (alt 미확보)
 ];
