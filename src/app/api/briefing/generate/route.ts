@@ -4,6 +4,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { collectNews } from "@/lib/news/collector";
 import { generateSummaries } from "@/lib/ai/summarizer";
 import { getKSTDateString } from "@/lib/date";
+import { isDailyGenerateLimited } from "@/lib/permissions";
 
 export const maxDuration = 300;
 
@@ -33,8 +34,9 @@ export async function POST() {
     }
 
     const today = getKSTDateString();
-    if (role === "R" && profile?.last_generated_date === today) {
-      return NextResponse.json({ error: "Daily limit reached. Upgrade to generate unlimited briefings." }, { status: 429 });
+    // R, S 는 일 1회 한도. A/T 는 무제한.
+    if (isDailyGenerateLimited(role) && profile?.last_generated_date === today) {
+      return NextResponse.json({ error: "Daily limit reached. Try again tomorrow." }, { status: 429 });
     }
 
     // 3. 사용자의 카테고리/키워드로 interest_groups 보장
@@ -120,8 +122,8 @@ export async function POST() {
       .limit(5)
       .order("collected_at", { ascending: false });
 
-    // R 플랜: 오늘 날짜 기록
-    if (role === "R") {
+    // 일 1회 제한 적용 롤(R, S): 오늘 날짜 기록 — 다음 호출에서 429
+    if (isDailyGenerateLimited(role)) {
       await admin.from("profiles").update({ last_generated_date: today }).eq("id", user.id);
     }
 
