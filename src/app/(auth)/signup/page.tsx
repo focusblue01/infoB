@@ -66,9 +66,12 @@ export default function SignupPage() {
   }
 
   async function handleGoogleLogin() {
+    // 가입 페이지에서의 Google OAuth — 콜백에 from=signup 마커를 달아
+    // 신규 가입자는 /welcome 으로 안내되게 함 (기존 사용자는 정상적으로
+    // /feed 또는 /onboarding 으로 라우팅)
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
-      options: { redirectTo: `${window.location.origin}/callback` },
+      options: { redirectTo: `${window.location.origin}/callback?from=signup` },
     });
     if (error) setError(error.message);
   }

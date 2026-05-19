@@ -14,10 +14,11 @@ export async function GET(request: Request) {
     if (!error) {
       const { data: { user } } = await supabase.auth.getUser();
 
-      // 이메일 인증으로 처음 확정된 신규 가입자는 /welcome 으로 안내.
-      //   기준: ?type=signup 또는 email_confirmed_at 이 60초 이내(즉 방금 확인됨)
+      // 이메일/OAuth 가입으로 처음 확정된 신규 사용자는 /welcome 으로 안내.
+      //   기준: type=signup, ?from=signup, 또는 email_confirmed_at 60초 이내
       const justConfirmed = (() => {
         if (type === "signup") return true;
+        if (searchParams.get("from") === "signup") return true;
         const ts = user?.email_confirmed_at;
         if (!ts) return false;
         const diff = Date.now() - new Date(ts).getTime();
