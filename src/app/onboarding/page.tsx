@@ -7,18 +7,16 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { CategorySelector } from "@/components/onboarding/CategorySelector";
 import { KeywordInput } from "@/components/onboarding/KeywordInput";
-import { RssSourceInput } from "@/components/onboarding/RssSourceInput";
 import type { NewsCategory, UserRole } from "@/types";
 import { ArrowRight, ArrowLeft, Check } from "lucide-react";
 import { LanguageProvider, useLanguage } from "@/lib/language-context";
-import { canUseKeywords, canUseRss, maxCategories, maxKeywords } from "@/lib/permissions";
+import { canUseKeywords, maxCategories, maxKeywords } from "@/lib/permissions";
 
 function OnboardingContent() {
   const [step, setStep] = useState(0);
   const [categories, setCategories] = useState<NewsCategory[]>([]);
   const [keywords, setKeywords] = useState<string[]>([]);
   const [excludeKeywords, setExcludeKeywords] = useState<string[]>([]);
-  const [rssSources, setRssSources] = useState<{ name: string; url: string }[]>([]);
   const [loading, setLoading] = useState(false);
   const [role, setRole] = useState<UserRole>("N");
   const router = useRouter();
@@ -36,7 +34,6 @@ function OnboardingContent() {
   }, []);
 
   const keywordsEnabled = canUseKeywords(role);
-  const rssEnabled = canUseRss(role);
   const catLimit = maxCategories(role);
   const kwLimit = maxKeywords(role);
 
@@ -46,7 +43,7 @@ function OnboardingContent() {
       const res = await fetch("/api/interests", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ categories, keywords, excludeKeywords, rssSources }),
+        body: JSON.stringify({ categories, keywords, excludeKeywords, rssSources: [] }),
       });
       if (!res.ok) throw new Error("Failed to save");
       router.push("/feed");
@@ -80,14 +77,6 @@ function OnboardingContent() {
       ),
       valid: true,
     }] : []),
-    {
-      title: isKo ? "RSS 소스 추가 (선택)" : "Add RSS Sources (Optional)",
-      desc: isKo
-        ? "직접 추가하고 싶은 뉴스 소스의 RSS URL을 입력하세요."
-        : "Enter the RSS URL of any news source you'd like to add.",
-      content: <RssSourceInput sources={rssSources} onChange={setRssSources} disabled={!rssEnabled} />,
-      valid: true,
-    },
   ];
 
   const current = steps[step];
