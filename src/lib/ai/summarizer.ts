@@ -176,10 +176,70 @@ function parseSummaryResponse(text: string): { title: string; content: string } 
   return { title, content };
 }
 
+/**
+ * 미사용 키워드 그룹 정리.
+ *   - 키워드 그룹의 실시간 구독자 수를 계산해 subscriber_count 갱신
+ *   - 구독자 ≥1 인 그룹은 last_subscribed_at = now 로 리프레시
+ *   - 구독자 0 이면서 last_subscribed_at 이 7일 이상 지난 키워드 그룹은
+ *     is_active=false (브리핑 생성 중단). 카테고리/시스템 그룹은 제외.
+ *   - 다시 구독자가 생기면(>0) is_active=true 로 자동 복구.
+ */
+export async function pruneUnusedKeywordGroups(): Promise<void> {
+  const supabase = createAdminClient();
+  const UNUSED_DAYS = 7;
+  const cutoffIso = new Date(Date.now() - UNUSED_DAYS * 24 * 60 * 60 * 1000).toISOString();
+  const nowIso = new Date().toISOString();
+
+  const [groupsRes, kwRes] = await Promise.all([
+    supabase.from("interest_groups").select("id, group_key, similar_keywords, is_active, is_system, last_subscribed_at").eq("group_type", "keyword"),
+    supabase.from("user_keywords").select("keyword").eq("is_exclude", false),
+  ]);
+
+  const groups = groupsRes.data ?? [];
+  const kwCount = new Map<string, number>();
+  for (const r of kwRes.data ?? []) {
+    const k = (r as any).keyword;
+    kwCount.set(k, (kwCount.get(k) ?? 0) + 1);
+  }
+
+  await Promise.all(
+    groups.map((g: any) => {
+      if (g.is_system) return Promise.resolve(); // 시스템 그룹 제외
+      const count =
+        (kwCount.get(g.group_key) ?? 0) +
+        (g.similar_keywords ?? []).reduce((acc: number, s: string) => acc + (kwCount.get(s) ?? 0), 0);
+
+      if (count > 0) {
+        // 구독자 있음 → 카운트 갱신 + 활성 복구 + last_subscribed_at 리프레시
+        return supabase
+          .from("interest_groups")
+          .update({ subscriber_count: count, last_subscribed_at: nowIso, is_active: true })
+          .eq("id", g.id);
+      }
+
+      // 구독자 0 → 카운트 0 갱신, 7일 이상 미사용이면 비활성화
+      const lastTs = g.last_subscribed_at ?? null;
+      const stale = !lastTs || lastTs < cutoffIso;
+      const patch: Record<string, any> = { subscriber_count: 0 };
+      if (stale && g.is_active) patch.is_active = false;
+      return supabase.from("interest_groups").update(patch).eq("id", g.id);
+    })
+  );
+}
+
 export async function generateSummaries(opts?: { onlyGroupIds?: string[]; targetDate?: string }): Promise<SummaryResult[]> {
   const supabase = createAdminClient();
   // targetDate(KST yyyy-mm-dd) 가 주어지면 그 날짜 기준으로 브리핑을 생성한다.
   const today = opts?.targetDate ?? getKSTDateString();
+
+  // 전체 생성(onlyGroupIds 미지정) 시 미사용 키워드 정리 선행
+  if (!opts?.onlyGroupIds || opts.onlyGroupIds.length === 0) {
+    try {
+      await pruneUnusedKeywordGroups();
+    } catch (e: any) {
+      console.error("pruneUnusedKeywordGroups failed:", e?.message);
+    }
+  }
   // 브리핑 참조 기준: 조회일 기준 전일(KST) 00:00 부터만 허용 (엄격 제한)
   // 예: 오늘이 KST 2026-04-24 이면 기사 published_at >= 2026-04-23T00:00:00+09:00 (= 2026-04-22T15:00:00Z)
   const [kstYyyy, kstMm, kstDd] = today.split("-").map(Number);

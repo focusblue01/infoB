@@ -16,6 +16,7 @@ interface InterestGroup {
   similar_keywords: string[];
   subscriber_count: number;
   is_active: boolean;
+  unused?: boolean;
 }
 
 export default function AdminCategoriesPage() {
@@ -243,6 +244,15 @@ export default function AdminCategoriesPage() {
             <span className="flex items-center gap-0.5 text-xs text-muted-foreground">
               <Users className="h-3 w-3" />{group.subscriber_count}
             </span>
+            {isKeyword && group.unused && (
+              <span
+                className="flex items-center gap-0.5 text-xs font-medium text-destructive"
+                title={t.adminUnusedKeyword}
+              >
+                <X className="h-3.5 w-3.5" />
+                {t.adminUnusedKeyword}
+              </span>
+            )}
           </div>
           {group.similar_keywords?.length > 0 && (
             <p className="text-xs text-muted-foreground mt-0.5 truncate">

@@ -104,8 +104,14 @@ export async function POST(request: Request) {
     );
   }
   for (const kw of keywords ?? []) {
+    // 구독 시점 기록 + (미사용으로 꺼졌던 경우) 활성 복구
     await adminSupabase.from("interest_groups").upsert(
-      { group_type: "keyword", group_key: kw },
+      {
+        group_type: "keyword",
+        group_key: kw,
+        last_subscribed_at: new Date().toISOString(),
+        is_active: true,
+      },
       { onConflict: "group_type,group_key" }
     );
   }
