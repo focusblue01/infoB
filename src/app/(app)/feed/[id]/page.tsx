@@ -87,13 +87,21 @@ export default function SummaryDetailPage() {
       });
   }
 
-  async function handleFeedback(isPositive: boolean) {
-    await fetch("/api/feedback", {
+  function handleFeedback(isPositive: boolean) {
+    // 즉시 UI 반영, 저장은 백그라운드. 실패 시 롤백.
+    const prevFeedback = data?.user_feedback ?? null;
+    setData((prev: any) => ({ ...prev, user_feedback: isPositive }));
+    fetch("/api/feedback", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ summary_id: params.id, is_positive: isPositive }),
-    });
-    setData((prev: any) => ({ ...prev, user_feedback: isPositive }));
+    })
+      .then((res) => {
+        if (!res.ok) throw new Error("feedback save failed");
+      })
+      .catch(() => {
+        setData((prev: any) => ({ ...prev, user_feedback: prevFeedback }));
+      });
   }
 
   if (loading) {
