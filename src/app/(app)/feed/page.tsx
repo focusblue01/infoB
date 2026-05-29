@@ -8,7 +8,7 @@ import { ChevronLeft, ChevronRight, Newspaper, Sparkles, Loader2, AlertCircle } 
 import { formatDate } from "@/lib/utils";
 import { useLanguage } from "@/lib/language-context";
 import { useUserRole } from "@/lib/user-context";
-import { canGenerate, canGenerateUnlimited, canNavigateDates, canBookmark } from "@/lib/permissions";
+import { canNavigateDates, canBookmark } from "@/lib/permissions";
 
 interface SummaryItem {
   id: string;
@@ -43,7 +43,8 @@ export default function FeedPage() {
   const [translating, setTranslating] = useState(false);
   const { language, t } = useLanguage();
   const role = useUserRole();
-  const showGenerate = canGenerate(role);
+  // 바로생성 버튼은 관리자만 노출
+  const showGenerate = role === "A";
   const dateNavEnabled = canNavigateDates(role);
   const bookmarkEnabled = canBookmark(role);
 
